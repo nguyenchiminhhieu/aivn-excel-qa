@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+!.env.example
+**/__pycache__
+*.pyc
+docs/
+scripts/
+*.zip
+*.csv
+*.jsonl
+*.log
+data/

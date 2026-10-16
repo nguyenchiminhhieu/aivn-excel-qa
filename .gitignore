@@ -24,3 +24,5 @@ answers.json
 .vscode/
 .idea/
 .DS_Store
+# submission archive
+*.zip

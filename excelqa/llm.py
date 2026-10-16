@@ -18,8 +18,8 @@ from openai import AuthenticationError, NotFoundError, OpenAI, PermissionDeniedE
 
 
 def _load_dotenv():
-    """Read KEY=VALUE lines from .env (current directory, then the project folder); real env vars win."""
-    for p in (Path.cwd() / ".env", Path(__file__).resolve().parent / ".env"):
+    """Read KEY=VALUE lines from .env (current directory, then the project root); real env vars win."""
+    for p in (Path.cwd() / ".env", Path(__file__).resolve().parents[1] / ".env"):
         if p.is_file():
             for line in p.read_text(encoding="utf-8").splitlines():
                 m = re.match(r"^[ \t]*([A-Za-z_]\w*)[ \t]*=[ \t]*(.*?)[ \t]*$", line)

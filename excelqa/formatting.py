@@ -6,7 +6,7 @@ import math
 import re
 from decimal import ROUND_HALF_UP, Decimal
 
-from excel_parser import strip_footnote
+from .excel_parser import strip_footnote
 
 WORD_NUM = {"zero": 0, "one": 1, "two": 2, "three": 3, "four": 4}
 

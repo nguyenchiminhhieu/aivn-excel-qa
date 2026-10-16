@@ -1,9 +1,16 @@
-"""Excel QA – command-line entry point.
+"""Excel QA – command-line entry point (also the Docker ENTRYPOINT).
 
-    python run.py --data-dir <folder with xlsx_files/ and queries.json> --out submission.csv
+    python run.py <input> [<output>]
+    python run.py --data-dir <input> --out <output>
 
-Writes exactly one row per query id (an empty answer if a question cannot be solved), so the output file is
-always valid. See README.md for configuration.
+<input>   folder with queries.json and the .xlsx files (directly or in xlsx_files/), or the queries.json file.
+          Default: $DATA_DIR, else /data, else the current folder.
+<output>  submission CSV path, or a folder (then <folder>/submission.csv is written).
+          Default: $OUTPUT_PATH, else /output/submission.csv when /output exists, else <input>/submission.csv.
+
+The CSV has exactly the columns id,answer and one row per distinct query id. It is written before the first
+question is solved and rewritten after every answer, so a valid file exists even if the run is interrupted.
+See README.md for configuration (API key via environment variable or .env, never in source code).
 """
 from __future__ import annotations
 
@@ -12,88 +19,162 @@ import concurrent.futures as cf
 import csv
 import json
 import os
+import sys
+import threading
 import time
 from collections import Counter
 from pathlib import Path
 
-from engine import v3
-from llm import check_access, make_client
+
+def _find_queries(inp: Path) -> Path:
+    if inp.is_file():
+        return inp
+    if (inp / "queries.json").is_file():
+        return inp / "queries.json"
+    found = sorted(inp.rglob("queries.json"), key=lambda p: len(p.parts))
+    if not found:
+        raise SystemExit(f"queries.json not found under {inp}")
+    return found[0]
 
 
-def _files(data: Path, q: dict) -> list[str]:
-    """`file_name` may be a single name or a list of names (multi-file questions)."""
-    names = q.get("file_names") or q.get("file_name") or []
-    names = [names] if isinstance(names, str) else list(names)
-    return [str(data / "xlsx_files" / n) for n in names]
+class Files:
+    """Resolve `file_name` against <base>/xlsx_files/, <base>/, then any .xlsx below <base> (case-insensitive)."""
+
+    def __init__(self, base: Path):
+        self.base = base
+        self.index = {}
+        for p in sorted(base.rglob("*"), key=lambda p: len(p.parts), reverse=True):
+            if p.suffix.lower() in (".xlsx", ".xlsm") and p.is_file():
+                self.index[p.name.lower()] = p
+
+    def resolve(self, name: str) -> str:
+        for p in (self.base / "xlsx_files" / name, self.base / name):
+            if p.is_file():
+                return str(p)
+        return str(self.index.get(Path(name).name.lower(), self.base / "xlsx_files" / name))
+
+    def of(self, q: dict) -> list[str]:
+        """`file_name` may be a single name or a list of names (multi-file questions)."""
+        names = q.get("file_names") or q.get("file_name") or []
+        names = [names] if isinstance(names, str) else list(names)
+        return [self.resolve(n) for n in names]
+
+
+def _out_paths(arg: str | None, base: Path) -> list[Path]:
+    if arg:
+        p = Path(arg)
+        return [p / "submission.csv" if (p.is_dir() or not p.suffix) else p]
+    if os.environ.get("OUTPUT_PATH"):
+        return _out_paths(os.environ["OUTPUT_PATH"], base)
+    if Path("/output").is_dir():
+        return [Path("/output/submission.csv")]
+    return [base / "submission.csv"]
+
+
+def _write_csv(paths: list[Path], ids: list, answers: dict):
+    for path in paths:
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_name(path.name + ".tmp")
+            with open(tmp, "w", newline="", encoding="utf-8") as fh:
+                w = csv.writer(fh)
+                w.writerow(["id", "answer"])
+                for i in ids:
+                    w.writerow([i, answers.get(i, "")])
+            os.replace(tmp, path)
+        except OSError as e:
+            print(f"warning: cannot write {path}: {e}", file=sys.stderr)
 
 
 def main():
     ap = argparse.ArgumentParser(description="Answer questions about Excel files (AI2026, topic 2).")
-    ap.add_argument("--data-dir", required=True, help="folder containing xlsx_files/ and queries.json")
-    ap.add_argument("--out", default="submission.csv", help="output CSV (id,answer)")
-    ap.add_argument("--workers", type=int, default=6, help="questions processed in parallel")
+    ap.add_argument("input", nargs="?", help="folder with queries.json and .xlsx files (or the queries.json)")
+    ap.add_argument("output", nargs="?", help="output CSV path or folder")
+    ap.add_argument("--data-dir", "--input", "-i", dest="data_dir", help="same as <input>")
+    ap.add_argument("--out", "--output", "-o", dest="out", help="same as <output>")
+    ap.add_argument("--api-key", help="OpenRouter API key (prefer the OPENROUTER_API_KEY environment variable)")
+    ap.add_argument("--workers", type=int, default=int(os.environ.get("QA_WORKERS", 6)),
+                    help="questions processed in parallel (default 6)")
     ap.add_argument("--ids", help="comma-separated subset of query ids (debugging)")
     ap.add_argument("--trace", help="optional JSONL file with per-question candidates and decisions")
     args = ap.parse_args()
+    if args.api_key:
+        os.environ["OPENROUTER_API_KEY"] = args.api_key
+
+    from excelqa import solver                       # imported after the key is in the environment
+    from excelqa.llm import check_access, make_client
 
     t0 = time.time()
-    data = Path(args.data_dir)
-    queries = json.loads((data / "queries.json").read_text(encoding="utf-8-sig"))
+    inp = args.data_dir or args.input or os.environ.get("DATA_DIR") or ("/data" if Path("/data").is_dir() else ".")
+    qpath = _find_queries(Path(inp))
+    base = qpath.parent
+    files = Files(base)
+    queries = json.loads(qpath.read_text(encoding="utf-8-sig"))
     if args.ids:
         keep = set(args.ids.split(","))
         queries = [q for q in queries if str(q["id"]) in keep]
+    seen, unique = set(), []
+    for q in queries:                                 # one row per id, first occurrence wins
+        if str(q["id"]) not in seen:
+            seen.add(str(q["id"]))
+            unique.append(q)
+    queries = unique
+    ids = [q["id"] for q in queries]
+    outs = _out_paths(args.out or args.output, base)
+    answers: dict = {}
+    _write_csv(outs, ids, answers)                    # a valid file exists from the start
+
     budget = float(os.environ.get("QA_TIME_BUDGET", 0.8 * 120 * max(len(queries), 1)))
     deadline = t0 + 0.85 * budget                     # after this, no escalation: answer with what we have
 
     for q in queries:                                 # parse each workbook once; forked executors inherit it
         try:
-            v3.load(_files(data, q))
+            solver.load(files.of(q))
         except Exception as e:  # noqa: BLE001
-            print(f"[{q['id']}] cannot read workbook: {e}")
+            print(f"[{q['id']}] cannot read workbook: {e}", file=sys.stderr)
 
     client = make_client()
     check_access(client)
 
     def one(q):
         usage, start = Counter(), time.time()
-        paths = _files(data, q)
+        paths = files.of(q)
         try:
-            ans, tr = v3.solve(client, paths, q["query"], usage, deadline)
+            ans, tr = solver.solve(client, paths, q["query"], usage, deadline)
         except Exception as e:  # noqa: BLE001
             ans, tr = "", {"error": repr(e)}
         if not ans and paths:                         # last resort: one careful direct reading
             try:
-                c = v3.direct_candidate(client, v3.load(paths), q["query"], "low", usage)
-                ans = v3.render_answer(c["answer"], q["query"], None) if c["answer"] else ""
+                c = solver.direct_candidate(client, solver.load(paths), q["query"], "low", usage)
+                ans = solver.render_answer(c["answer"], q["query"], None) if c["answer"] else ""
                 tr["fallback"] = True
             except Exception as e:  # noqa: BLE001
                 tr["fallback_error"] = repr(e)
+        ans = " ".join(str(ans).split()) if ans is not None else ""      # one line, final answer only
         tr.update({"latency": round(time.time() - start, 2), "calls": usage["calls"],
                    "prompt_tokens": usage["prompt"], "completion_tokens": usage["completion"]})
         return q["id"], ans, tr
 
-    answers, traces = {}, {}
-    with cf.ThreadPoolExecutor(args.workers) as ex:
-        for qid, ans, tr in ex.map(one, queries):
-            answers[qid], traces[qid] = ans, tr
+    traces, lock = {}, threading.Lock()
+    with cf.ThreadPoolExecutor(max(1, args.workers)) as ex:
+        for fut in cf.as_completed([ex.submit(one, q) for q in queries]):
+            qid, ans, tr = fut.result()
+            with lock:
+                answers[qid], traces[qid] = ans, tr
+                _write_csv(outs, ids, answers)
 
-    with open(args.out, "w", newline="", encoding="utf-8") as fh:
-        w = csv.writer(fh)
-        w.writerow(["id", "answer"])
-        for q in queries:
-            w.writerow([q["id"], answers.get(q["id"], "")])
     if args.trace:
         with open(args.trace, "w", encoding="utf-8") as fh:
             for q in queries:
                 fh.write(json.dumps({"id": q["id"], "query": q["query"], "answer": answers.get(q["id"]),
                                      **traces.get(q["id"], {})}, ensure_ascii=False, default=str) + "\n")
-    empty = sum(1 for q in queries if not answers.get(q["id"]))
+    empty = sum(1 for i in ids if not answers.get(i))
     if empty:
-        print(f"warning: {empty}/{len(queries)} questions have an empty answer (use --trace to see why)")
+        print(f"warning: {empty}/{len(ids)} questions have an empty answer (use --trace to see why)", file=sys.stderr)
     tok = sum(t.get("prompt_tokens", 0) + t.get("completion_tokens", 0) for t in traces.values())
-    print(f"done {len(queries)} questions in {time.time() - t0:.1f}s; "
-          f"tokens/question {tok / max(len(queries), 1):.0f} -> {args.out}")
-    if queries and empty == len(queries):
+    print(f"done {len(ids)} questions in {time.time() - t0:.1f}s; tokens/question {tok / max(len(ids), 1):.0f} "
+          f"-> {', '.join(map(str, outs))}")
+    if ids and empty == len(ids):
         raise SystemExit(2)
 
 

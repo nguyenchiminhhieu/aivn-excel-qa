@@ -1,4 +1,4 @@
-"""Exact-match scoring: python evaluate.py <submission.csv> <gold.csv | answers.json>
+"""Exact-match scoring: python scripts/evaluate.py <submission.csv> <gold.csv | answers.json>
 
 Gold can be a CSV with columns id,answer (e.g. BTC's sample_submission.csv) or a JSON list of {"id", "answer"}
 (e.g. BTC's answers.json). Ids are compared as strings; answers after stripping surrounding whitespace, exactly.

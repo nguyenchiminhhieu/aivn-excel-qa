@@ -1,109 +1,137 @@
-# AIVN Excel QA
+# AI26C0062 – Hỏi đáp trên bảng tính Excel
 
-Giải pháp cho đề thi AI2026, Chủ đề 2 "Hỏi đáp trên bảng tính Excel": trả lời câu hỏi ngôn ngữ tự nhiên (tiếng Anh, Việt, Hàn, Trung…) trên các file `.xlsx` có header nhiều tầng, ô gộp, nhiều bảng hoặc nhiều sheet. LLM dùng **Qwen3.7 Flash qua OpenRouter**, đúng yêu cầu của đề.
+Giải pháp cho đề thi AI2026, Chủ đề 2 "Hỏi đáp trên bảng tính Excel". Hệ thống trả lời câu hỏi ngôn ngữ tự nhiên (tiếng Anh, Việt, Hàn, Trung…) trên các file `.xlsx` có header nhiều tầng, ô gộp, nhiều bảng trên một sheet hoặc nhiều sheet. LLM dùng **Qwen3.7 Flash (`qwen/qwen3.7-flash`) qua OpenRouter**, đúng yêu cầu của đề.
 
-## Yêu cầu
-- Python **3.11** (đã chạy với 3.11.5), hệ điều hành **Linux**. Phần thực thi dùng `multiprocessing` kiểu `fork`, không chạy trên Windows.
-- Thư viện đã ghim đúng phiên bản dùng khi đo kết quả: openpyxl 3.1.5, pandas 3.0.2, numpy 1.26.4, openai 2.30.0 (xem `requirements.txt`).
-- Một khóa API OpenRouter.
+## 1. Chạy bằng Docker (cách chấm thi)
 
-## Cài đặt
+`Dockerfile` nằm ở thư mục gốc. Ảnh chạy trên Linux amd64, không dùng GPU, chứa sẵn mã nguồn và thư viện. Khóa API **không** nằm trong ảnh; truyền vào lúc chạy.
+
 ```bash
-git clone https://github.com/nguyenchiminhhieu/aivn-excel-qa.git
-cd aivn-excel-qa
-python3.11 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env        # rồi điền OPENROUTER_API_KEY vào .env
-```
-Có thể đặt khóa bằng biến môi trường thay cho `.env`: `export OPENROUTER_API_KEY=...`. Không đưa khóa vào mã nguồn, và không commit file `.env`.
+docker build --platform linux/amd64 -t ai26c0062 .
 
-## Chạy
-```bash
-python run.py --data-dir "<thư mục chứa xlsx_files/ và queries.json>" --out submission.csv
+docker run --rm \
+  -e OPENROUTER_API_KEY=<khóa OpenRouter> \
+  -v "/đường/dẫn/test":/data:ro \
+  -v "/đường/dẫn/output":/output \
+  ai26c0062 /data /output/submission.csv
 ```
-Thư mục dữ liệu có cùng cấu trúc với bộ dữ liệu BTC công bố:
+
+`ENTRYPOINT` là `python /app/run.py`. Tham số chấm được nối vào sau tên ảnh:
+
+| Cách gọi | Ý nghĩa |
+|---|---|
+| `ai26c0062 <input> <output>` | dạng positional |
+| `ai26c0062 --data-dir <input> --out <output>` | dạng flag (`--input/-i`, `--output/-o` cũng được) |
+| `ai26c0062` (không tham số) | input `/data`, output `/output/submission.csv` nếu có thư mục `/output`, ngược lại `/data/submission.csv` |
+
+- `<input>`: thư mục chứa `queries.json` và các file `.xlsx` (đặt trong `xlsx_files/` hoặc ngay cạnh `queries.json`), hoặc đường dẫn tới chính `queries.json`. Nếu `queries.json` nằm trong thư mục con, chương trình tự tìm.
+- `<output>`: đường dẫn file CSV, hoặc một thư mục (khi đó ghi `<thư mục>/submission.csv`).
+- Có thể dùng biến môi trường `DATA_DIR`, `OUTPUT_PATH` thay cho tham số.
+- Khóa API có thể truyền bằng `-e OPENROUTER_API_KEY=...`, `--env-file .env`, hoặc tham số `--api-key`.
+
+## 2. Đầu vào và đầu ra
+
 ```
-<data-dir>/
+<input>/
 ├── xlsx_files/        # các file .xlsx
 └── queries.json       # [{"id": ..., "file_name": "...", "query": "..."}]
 ```
-- `file_name` có thể là một tên file hoặc một danh sách tên file (câu hỏi trên nhiều file). Nếu có thêm khóa `file_names` thì khóa này được ưu tiên. Tên file được hiểu tương đối với `xlsx_files/`.
-- Kết quả: `submission.csv` (UTF-8) gồm hai cột `id,answer`, mỗi `id` đúng một dòng, theo đúng thứ tự trong `queries.json`. Câu nào không giải được vẫn có dòng, với ô `answer` để trống, nên file luôn hợp lệ.
-- Trước khi chạy, chương trình gửi một yêu cầu rất nhỏ để kiểm tra khóa API. Khóa sai thì dừng ngay với thông báo rõ ràng.
-- Cuối lượt chạy, nếu có câu trả lời rỗng thì chương trình in cảnh báo. Nếu **mọi** câu đều rỗng thì thoát với mã 2.
+- `file_name` có thể là một tên file hoặc một danh sách tên file (câu hỏi trên nhiều file); khóa `file_names` nếu có sẽ được ưu tiên.
+- `submission.csv` (UTF-8) gồm đúng hai cột `id,answer`, **mỗi id đúng một dòng** (id trùng chỉ giữ lần đầu), theo thứ tự trong `queries.json`. Ô `answer` chỉ chứa đáp án cuối, trên một dòng.
+- File kết quả được ghi **ngay từ đầu** (đáp án rỗng) và ghi lại sau mỗi câu trả lời xong (ghi file tạm rồi đổi tên), nên luôn có một file hợp lệ kể cả khi lượt chạy bị dừng giữa chừng.
+- Trước khi chạy, chương trình gửi một yêu cầu rất nhỏ để kiểm tra khóa API; khóa sai thì dừng ngay với thông báo rõ ràng. Nếu mọi câu đều rỗng thì thoát với mã 2.
 
-Tham số dòng lệnh:
+## 3. Chạy không dùng Docker
+
+Yêu cầu Python **3.11** trên **Linux** (phần thực thi dùng `multiprocessing` kiểu `fork`).
+
+```bash
+python3.11 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env        # rồi điền OPENROUTER_API_KEY
+python run.py "<input>" submission.csv
+```
 
 | Tham số | Mặc định | Ý nghĩa |
 |---|---|---|
-| `--data-dir` | (bắt buộc) | Thư mục dữ liệu như trên |
-| `--out` | `submission.csv` | File kết quả |
-| `--workers` | `6` | Số câu hỏi xử lý song song |
-| `--ids` | – | Chỉ chạy các id liệt kê, cách nhau bởi dấu phẩy. Nên dùng kèm `--out` riêng khi debug |
-| `--trace` | – | Ghi file JSONL: các ứng viên, đường quyết định, token, độ trễ của từng câu |
+| `--workers` | `6` (hoặc `QA_WORKERS`) | Số câu hỏi xử lý song song |
+| `--ids` | – | Chỉ chạy các id liệt kê, cách nhau bởi dấu phẩy (debug) |
+| `--trace` | – | Ghi JSONL: các ứng viên, đường quyết định, token, độ trễ của từng câu |
 
-Biến môi trường (hoặc `.env`):
-
-| Biến | Mặc định | Ý nghĩa |
+| Biến môi trường (hoặc `.env`) | Mặc định | Ý nghĩa |
 |---|---|---|
 | `OPENROUTER_API_KEY` | – | Bắt buộc |
 | `QA_MODEL` | `qwen/qwen3.7-flash` | Model trên OpenRouter |
-| `QA_TIME_BUDGET` | 96 giây × số câu | Ngân sách **mềm** cho cả lượt chạy, tính từ lúc khởi động. Sau 85% ngân sách, câu hỏi không được leo thang sang bước 2 nữa, nhưng lượt chạy vẫn có thể vượt ngân sách |
-| `QA_CALL_TIMEOUT` | `90` | Timeout mỗi yêu cầu HTTP (giây), chưa tính các lần retry |
+| `QA_TIME_BUDGET` | 96 giây × số câu | Ngân sách mềm cho cả lượt chạy. Sau 85% ngân sách, câu hỏi không leo thang sang bước 2 nữa |
+| `QA_CALL_TIMEOUT` | `90` | Timeout mỗi yêu cầu HTTP (giây) |
+| `QA_EXEC_MAX_MB` | `128` | Bộ nhớ thêm tối đa cho mỗi chương trình pandas do LLM sinh; vượt thì bị dừng |
 | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | Endpoint |
 
-File `.env` được tìm ở thư mục hiện tại trước, sau đó ở thư mục dự án. Biến môi trường thật luôn được ưu tiên hơn `.env`; dòng trống giá trị bị bỏ qua.
+File `.env` được tìm ở thư mục hiện tại, sau đó ở thư mục gốc dự án. Biến môi trường thật luôn được ưu tiên. Không đưa khóa vào mã nguồn và không commit `.env`.
 
-Chấm điểm Exact Match:
+Chấm Exact Match trên bộ public:
 ```bash
-python evaluate.py submission.csv "<data-dir>/sample_submission.csv"   # hoặc answers.json của BTC
-```
-File đáp án có thể là CSV `id,answer` hoặc JSON dạng `[{"id": ..., "answer": ...}]`. Id được so dưới dạng chuỗi; đáp án được bỏ khoảng trắng đầu/cuối rồi so khớp chính xác.
-
-## Kiến trúc
-Sơ đồ: `docs/architecture.drawio` (mở bằng app.diagrams.net hoặc extension Draw.io Integration của VS Code). Trang 1 là luồng xử lý, trang 2 là tech stack.
-
-**Phần A – mỗi workbook, chạy một lần, không gọi LLM** (`excel_parser.py`, `engine/ir.py`)
-- Đọc ô bằng openpyxl: lấy giá trị cache của công thức, tự tính khi không có cache (biểu thức được kiểm tra AST theo danh sách trắng trước khi tính); xử lý ô gộp, số/ngày dạng text, ký hiệu thiếu dữ liệu.
-- Tách vùng bảng (bảng xếp chồng, bảng cạnh nhau, biểu mẫu key–value) và dựng header nhiều tầng, có ghép các header bị xuống dòng.
-- Dựng cây hàng cha › con từ nhiều tín hiệu: thụt lề, cột Indent Level, hàng tiêu đề nhóm, nhãn khoảng lồng nhau, tổng nhất quán (cha = Σ con), khối nhãn lặp lại, nhãn thời gian (năm/quý). Đánh dấu dòng tổng hợp.
-- Kết quả là **TableIR**: mỗi giá trị kèm địa chỉ ô A1.
-
-**Phần B – mỗi câu hỏi** (`engine/v3.py`)
-- Mỗi bảng được đưa cho chương trình dưới dạng **pandas DataFrame** `T0, T1, …` với các cột `row`, `path`, `level_k`, `is_summary`, `has_children` và tên cột giá trị đọc được, kèm bảng dài `facts`.
-- LLM nhận một **bản đồ** của workbook. Mỗi cột trong bản đồ có chú thích ngữ nghĩa: rate, average, count, code hay year; có cộng dồn được không; đơn vị gì. Text đáng ngờ trong ô được đánh dấu.
-- **Bước 1** gồm hai ứng viên chạy song song, đều tắt reasoning:
-  - Ứng viên thứ nhất luôn là **chương trình pandas** do LLM viết, chạy trong tiến trình con (timeout 25 giây, được sửa 1 lần nếu lỗi).
-  - Ứng viên thứ hai là **đọc trực tiếp bản đồ**, khi bản đồ đủ nhỏ (≤ 45.000 ký tự và mọi bảng ≤ 150 hàng). Nếu bản đồ lớn hơn thì ứng viên thứ hai là một chương trình pandas khác, chạy ở nhiệt độ 0.7.
-  
-  Nếu hai đáp án (sau khi định dạng) trùng nhau và có căn cứ trong dữ liệu thì trả lời luôn.
-- **Bước 2** chạy khi bước 1 không cho hai đáp án trùng nhau và có căn cứ: thêm 2 chương trình với reasoning `low` (cộng một lượt đọc trực tiếp với reasoning `low` nếu bản đồ đủ nhỏ). Sau đó bỏ phiếu trên mọi ứng viên hợp lệ của cả hai bước. Hòa phiếu thì gọi trọng tài.
-- Nếu vẫn không có đáp án, chương trình thử thêm một lượt đọc trực tiếp với reasoning `low`.
-- **Định dạng đáp án**: số chữ số thập phân lấy từ câu hỏi (có regex cho tiếng Anh, Việt, Hàn, Trung, Nhật), không có thì lấy từ đặc tả LLM trả về. Làm tròn half-up bằng `Decimal`.
-
-## Kết quả đo được (Qwen3.7 Flash, 6 luồng, mỗi bộ chạy 1 lần)
-| Bộ dữ liệu | Exact Match | Trung vị / chậm nhất mỗi câu | Token/câu | Chi phí/câu |
-|---|---|---|---|---|
-| Public 2 của BTC (30 câu), dùng để debug nên kết quả lạc quan | 30/30 | 9.9 s / 171 s | 17k | ≈ $0.0009 |
-| Public 1 của BTC (20 câu) | 16/20 | 31 s / 143 s | 26k | ≈ $0.0014 |
-| Bộ robustness tự xây (26 câu, chưa dùng để chỉnh) | 26/26 | 5.7 s / 62 s | 3k | ≈ $0.0002 |
-| Bộ nhiều file tự xây (37 câu, chưa dùng để chỉnh) | 34/37 | 39 s / 583 s | 55k | ≈ $0.0028 |
-
-Chi phí tính theo giá niêm yết của OpenRouter ($0.03/M token input, $0.13/M token output), giới hạn của đề là $0.10/câu. Public 2 chạy hết 3 phút 50 giây cho 30 câu, RAM đỉnh khoảng 190 MB. Câu hỏi trên nhiều file tốn token và thời gian nhiều hơn rõ rệt.
-
-## Cấu trúc thư mục
-```
-run.py            điểm vào dòng lệnh
-llm.py            gọi Qwen3.7 Flash qua OpenRouter (cấu hình từ biến môi trường / .env)
-excel_parser.py   đọc và khôi phục cấu trúc bảng (chạy riêng: python excel_parser.py file.xlsx để xem kết quả parse)
-formatting.py     định dạng đáp án
-engine/ir.py      TableIR
-engine/v3.py      DataFrame cho chương trình, bản đồ và lớp ngữ nghĩa cột, ứng viên, bỏ phiếu, trọng tài
-evaluate.py       chấm Exact Match
-docs/             sơ đồ kiến trúc (draw.io)
+python scripts/evaluate.py submission.csv "<input>/sample_submission.csv"   # hoặc answers.json của BTC
 ```
 
-## Giới hạn đã biết
-- Code do LLM sinh chạy bằng `exec()` trong tiến trình con. Cách này cô lập lỗi và có timeout, nhưng **chưa phải sandbox bảo mật** (tiến trình con vẫn đọc/ghi được file và truy cập được mạng).
-- Parser dùng heuristic. Layout quá lạ (khác hẳn bảng thống kê hay bảng bản ghi) có thể bị đọc sai cấu trúc.
-- Các câu cần ngầm hiểu quy ước riêng của người ra đề (không nêu trong câu hỏi) có thể bị trả lời theo cách hiểu khác.
+## 4. Kiến trúc
+
+Sơ đồ: `docs/architecture.drawio` (mở bằng app.diagrams.net hoặc extension Draw.io Integration của VS Code). Tổng quan nghiên cứu các giải pháp hàng đầu trên RealHiTBench và những gì đã áp dụng: `docs/RESEARCH.md`.
+
+**Phần A – mỗi workbook, chạy một lần, không gọi LLM** (`excelqa/excel_parser.py`, `excelqa/ir.py`)
+- Đọc ô bằng openpyxl: lấy giá trị cache của công thức (kể cả array formula), tự tính khi không có cache (biểu thức được kiểm tra AST theo danh sách trắng); xử lý ô gộp, số/ngày dạng text, dấu thập phân kiểu phẩy, ký hiệu thiếu dữ liệu, ma trận ký hiệu `+/−`.
+- Tách vùng bảng (bảng xếp chồng, bảng cạnh nhau, biểu mẫu key–value) và dựng header nhiều tầng (header xuống dòng, hàng mã định danh, băng năm lặp lại).
+- Dựng cây hàng cha › con từ nhiều tín hiệu: thụt lề, cột Indent Level, hàng tiêu đề nhóm, nhãn khoảng lồng nhau, tổng nhất quán (cha = Σ con), khối nhãn lặp lại, nhãn thời gian. Đánh dấu dòng tổng hợp; bỏ chỉ số chú thích dính vào nhãn.
+- Kết quả là **TableIR**: mỗi giá trị kèm đường dẫn header hàng/cột và địa chỉ ô A1.
+
+**Phần B – mỗi câu hỏi** (`excelqa/ground.py`, `excelqa/solver.py`, `excelqa/formatting.py`)
+- **Dữ liệu cho chương trình**: mỗi bảng là một pandas DataFrame `T0, T1, …` (cột `row`, `path`, `level_k`, `is_summary`, `has_children` và tên cột giá trị đọc được) kèm bảng dài `facts`. Lớp ngữ nghĩa cột cho biết cột là rate, average, count, code, year hay date, cộng dồn được không, đơn vị gì; có thêm cột dẫn xuất (tổng nhóm cột con, tuổi tại một ngày).
+- **Neo câu hỏi vào header (FOCUS)**: tách n-gram của câu hỏi, khớp với đường dẫn hàng/cột theo trọng số IDF, rồi đưa các ô liên quan nhất (kèm đường dẫn đầy đủ và địa chỉ A1) lên đầu ngữ cảnh. Không tốn lần gọi LLM.
+- **Bước 1**: hai ứng viên song song, tắt reasoning: một **chương trình pandas** (kế hoạch JSON trước rồi mới viết code; chạy trong tiến trình con có timeout 25 giây và giới hạn bộ nhớ) và một lượt **đọc trực tiếp bản đồ** khi bản đồ đủ nhỏ. Hai đáp án trùng nhau và có căn cứ trong dữ liệu thì trả lời luôn.
+- **Bước 2** (chỉ khi bước 1 không đồng thuận): thêm 2 chương trình với reasoning `low` (và một lượt đọc trực tiếp `low` nếu bản đồ nhỏ). Ứng viên được lọc theo **kiểu đáp án** câu hỏi yêu cầu (Yes/No, số, danh sách) và theo **mẫu đáp án** nếu câu hỏi cho sẵn (ví dụ `(xxx in xxx)`), rồi bỏ phiếu trên dạng chuẩn hóa (số làm tròn, chữ bỏ dấu câu và hoa thường). Mỗi nhóm phiếu được xuất bằng đúng cách viết trong bảng nếu có. Hòa phiếu thì gọi trọng tài (reasoning `medium`).
+- **Định dạng đáp án**: số chữ số thập phân lấy từ câu hỏi (regex cho tiếng Anh, Việt, Hàn, Trung, Nhật), không có thì theo đặc tả LLM trả về nhưng không thêm số 0 thừa; làm tròn half-up bằng `Decimal`.
+
+## 5. Kết quả đo được (Qwen3.7 Flash, 6 luồng, mỗi bộ chạy 1 lần)
+
+| Bộ dữ liệu | Exact Match |
+|---|---|
+| Public 1 của BTC (20 câu) | 18/20 |
+| Public 2 của BTC (30 câu) | 29/30 (30/30 ở lần chạy trước; câu 20 có hai cách hiểu) |
+| Bộ robustness tự xây (26 câu) | 26/26 |
+| Bộ nhiều file tự xây (37 câu) | 35/37 |
+| RealHiTBench, 300 câu Fact Checking + Numerical Reasoning trên các bảng **không** có trong bộ public (chưa dùng để tinh chỉnh) | 62.0% so khớp chính xác; 73.0% theo thước đo EM của RealHiTBench (bản trước: 59.3% / 69.7%) |
+
+Trên RealHiTBench: trung bình 38.5 giây, 3.7 lần gọi LLM và khoảng 21k token mỗi câu (≈ $0.001–0.003/câu theo giá niêm yết của OpenRouter, giới hạn của đề là $0.10/câu). Bộ nhớ đỉnh của cả lượt chạy đo được dưới 1 GB (xem mục 6).
+
+## 6. Tuân thủ điều kiện của đề
+
+| Điều kiện | Cách đáp ứng |
+|---|---|
+| Dockerfile ở thư mục gốc, Linux amd64, không GPU, có `ENTRYPOINT` | `Dockerfile`, `FROM --platform=linux/amd64 python:3.11-slim`, `ENTRYPOINT ["python", "/app/run.py"]` |
+| `submission.csv` đúng hai cột, mỗi id một dòng, chỉ đáp án cuối | `run.py`: loại id trùng, ghi file ngay từ đầu và sau mỗi câu, đáp án một dòng |
+| Qwen3.7 Flash qua OpenRouter, khóa ngoài mã nguồn | `excelqa/llm.py`: model mặc định `qwen/qwen3.7-flash`, khóa chỉ đọc từ biến môi trường / `.env` / `--api-key` |
+| ≤ $0.10/câu kể cả retry | `max_tokens` 6000 mỗi lần gọi, chỉ retry lỗi mạng/quá tải. Trên 1.001 câu đã chạy: nhiều nhất 9 lần gọi; câu đắt nhất ≈ $0.009 (148k token vào, 33k ra), trung bình ≈ $0.001–0.003 |
+| ≤ 40 phút cho 20 câu (6 vCPU) | 6 câu song song; ngân sách thời gian mềm 32 phút cho 20 câu, sau đó không leo thang nữa |
+| ≤ 1 GB khi chạy | Workbook được parse một lần; mỗi chương trình sinh ra bị giới hạn 128 MB thêm; thư viện số chạy 1 luồng |
+| ZIP ≤ 100 MB | Mã nguồn khoảng 0.2 MB, không kèm dữ liệu |
+
+## 7. Cấu trúc thư mục
+```
+Dockerfile               ảnh chấm thi (ENTRYPOINT = run.py)
+run.py                   điểm vào dòng lệnh: tìm dữ liệu, chạy song song, ghi submission.csv
+excelqa/
+  llm.py                 gọi Qwen3.7 Flash qua OpenRouter (cấu hình từ biến môi trường / .env)
+  excel_parser.py        đọc và khôi phục cấu trúc bảng (python -m excelqa.excel_parser file.xlsx để xem kết quả parse)
+  ir.py                  TableIR: hàng, cột, đường dẫn header, địa chỉ A1
+  ground.py              neo câu hỏi vào header (FOCUS), kiểu đáp án, mẫu đáp án
+  solver.py              DataFrame + bản đồ, các ứng viên, tiến trình con thực thi, bỏ phiếu, trọng tài
+  formatting.py          định dạng đáp án
+scripts/evaluate.py      chấm Exact Match
+docs/                    sơ đồ kiến trúc (draw.io), tài liệu nghiên cứu
+```
+
+## 8. Giới hạn đã biết
+- Code do LLM sinh chạy bằng `exec()` trong tiến trình con: cô lập lỗi, có timeout và giới hạn bộ nhớ, nhưng **chưa phải sandbox bảo mật**.
+- Parser dùng heuristic; layout quá lạ có thể bị đọc sai cấu trúc.
+- Kết quả của LLM dao động giữa các lần chạy (khoảng ±3 điểm trên 200 câu), nhất là ở các câu chỉ thắng với ít phiếu.
+- Câu hỏi cần ngầm hiểu quy ước riêng của người ra đề (không nêu trong câu hỏi) có thể bị trả lời theo cách hiểu khác.

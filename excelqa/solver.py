@@ -1,4 +1,4 @@
-"""v3 reasoning layer: model-native data interface + heterogeneous candidates + agreement gating.
+"""Reasoning layer: model-native data interface + heterogeneous candidates + agreement gating.
 
 Design (each choice is backed by a failure mode measured during development):
   * Tables are handed to generated code as plain pandas DataFrames (T0, T1, ...) with readable column names,
@@ -20,6 +20,7 @@ import io
 import json
 import math
 import multiprocessing as mp
+import os
 import re
 import sys
 import time
@@ -29,23 +30,23 @@ from pathlib import Path
 
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from excel_parser import _fmt, is_num, strip_footnote  # noqa: E402
-from formatting import format_answer  # noqa: E402
-from llm import extract_code as _extract_code, llm_call  # noqa: E402
+from .excel_parser import _fmt, is_num, strip_footnote
+from .formatting import format_answer
+from .llm import extract_code as _extract_code, llm_call
 
-from .ground import answer_template, expected_type, ground, type_ok  # noqa: E402
-from .ir import SUSPICIOUS, TableIR, build_many  # noqa: E402
+from .ground import answer_template, expected_type, ground, type_ok
+from .ir import SUSPICIOUS, TableIR, build_many
 
 EXEC_TIMEOUT = 25
+EXEC_MAX_MB = int(os.environ.get("QA_EXEC_MAX_MB", 128))   # extra memory one generated program may use
 MAX_ROWS_FULL = 150            # tables up to this size are shown with all values
 DIRECT_MAX_CHARS = 45000       # direct reading only when the whole map fits comfortably
 RESERVED = {"row", "sheet", "path", "label", "is_summary", "has_children", "depth"}
 _STATE: dict[str, dict] = {}   # key -> {"ir", "frames", "facts", "map", "text"}
 
 
-#  semantic layer
+# =============================================================================== semantic layer
 BIRTH_RE = re.compile(r"birth|\bdob\b|\bborn\b|ngày sinh|năm sinh|出生|생년월일|생일", re.I)
 
 
@@ -192,7 +193,7 @@ def unit_hint(t: TableIR) -> str:
     return m.group(0).strip(" ([") if m else ""
 
 
-#  data interface
+# =============================================================================== data interface
 def _names(t: TableIR) -> dict[str, str]:
     leaves = [c.label for c in t.cols]
     out, used = {}, set(RESERVED) | {h for h in t.label_headers if h}
@@ -318,7 +319,7 @@ def load(paths: list[str]) -> str:
     return key
 
 
-#  helpers exposed to programs
+# =============================================================================== helpers exposed to programs
 def _norm(s) -> str:
     return re.sub(r"\s+", " ", re.sub(r"[^\w%.]+", " ", str(s).lower())).strip()
 
@@ -374,12 +375,26 @@ def _run(code: str, key: str, q):
         q.put(("err", f"{type(e).__name__}: {e}"[:1200], buf.getvalue()[-800:]))
 
 
+def _rss_mb(pid: int) -> float:
+    try:
+        with open(f"/proc/{pid}/statm") as fh:
+            return int(fh.read().split()[1]) * os.sysconf("SC_PAGE_SIZE") / 2**20
+    except (OSError, ValueError, IndexError):
+        return 0.0
+
+
 def execute(code: str, key: str):
     ctx = mp.get_context("fork")
     q = ctx.Queue()
     p = ctx.Process(target=_run, args=(code, key, q))
+    base = _rss_mb(os.getpid())
     p.start()
-    p.join(EXEC_TIMEOUT)
+    end = time.time() + EXEC_TIMEOUT
+    while p.is_alive() and time.time() < end:
+        p.join(0.05)
+        if p.is_alive() and _rss_mb(p.pid) - base > EXEC_MAX_MB:      # keep the whole run inside the 1 GB limit
+            p.kill()
+            return "err", "MemoryError: program used too much memory; work on the needed rows/columns only", ""
     if p.is_alive():
         p.kill()
         return "err", "TimeoutError: program ran too long", ""

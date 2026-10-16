@@ -11,7 +11,7 @@ from pathlib import Path
 
 from openpyxl.utils import get_column_letter
 
-from excel_parser import parse_workbook
+from .excel_parser import parse_workbook
 
 SUSPICIOUS = re.compile(r"\b(ignore|disregard|forget|override)\b|\b(assistant|system|user)\s*:|\byou are (now|an?)\b|"
                         r"system prompt|\banswer (is|with)\b|\b(respond|reply) with\b|return the (value|answer)|"

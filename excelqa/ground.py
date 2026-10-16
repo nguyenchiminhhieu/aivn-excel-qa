@@ -12,7 +12,7 @@ import math
 import re
 from collections import Counter
 
-from excel_parser import _fmt
+from .excel_parser import _fmt
 
 STOP = set("""a an the of in on at to for from by with and or is are was were be been being what which who whom whose
 how many much does do did has have had than then that this these those there their its it as into per each all any
