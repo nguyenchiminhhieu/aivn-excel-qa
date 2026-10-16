@@ -76,7 +76,9 @@ python scripts/evaluate.py submission.csv "<input>/sample_submission.csv"   # ho
 
 ## 4. Kiến trúc
 
-Sơ đồ: `docs/architecture.drawio` (mở bằng app.diagrams.net hoặc extension Draw.io Integration của VS Code). Tổng quan nghiên cứu các giải pháp hàng đầu trên RealHiTBench và những gì đã áp dụng: `docs/RESEARCH.md`.
+![Kiến trúc](docs/architecture.png)
+
+File gốc để chỉnh sửa: `docs/architecture.drawio` (mở bằng app.diagrams.net hoặc extension Draw.io Integration của VS Code; trang 2 là tech stack). Ghi chú nghiên cứu: `docs/RESEARCH.md`.
 
 **Phần A – mỗi workbook, chạy một lần, không gọi LLM** (`excelqa/excel_parser.py`, `excelqa/ir.py`)
 - Đọc ô bằng openpyxl: lấy giá trị cache của công thức (kể cả array formula), tự tính khi không có cache (biểu thức được kiểm tra AST theo danh sách trắng); xử lý ô gộp, số/ngày dạng text, dấu thập phân kiểu phẩy, ký hiệu thiếu dữ liệu, ma trận ký hiệu `+/−`.
@@ -91,17 +93,14 @@ Sơ đồ: `docs/architecture.drawio` (mở bằng app.diagrams.net hoặc exten
 - **Bước 2** (chỉ khi bước 1 không đồng thuận): thêm 2 chương trình với reasoning `low` (và một lượt đọc trực tiếp `low` nếu bản đồ nhỏ). Ứng viên được lọc theo **kiểu đáp án** câu hỏi yêu cầu (Yes/No, số, danh sách) và theo **mẫu đáp án** nếu câu hỏi cho sẵn (ví dụ `(xxx in xxx)`), rồi bỏ phiếu trên dạng chuẩn hóa (số làm tròn, chữ bỏ dấu câu và hoa thường). Mỗi nhóm phiếu được xuất bằng đúng cách viết trong bảng nếu có. Hòa phiếu thì gọi trọng tài (reasoning `medium`).
 - **Định dạng đáp án**: số chữ số thập phân lấy từ câu hỏi (regex cho tiếng Anh, Việt, Hàn, Trung, Nhật), không có thì theo đặc tả LLM trả về nhưng không thêm số 0 thừa; làm tròn half-up bằng `Decimal`.
 
-## 5. Kết quả đo được (Qwen3.7 Flash, 6 luồng, mỗi bộ chạy 1 lần)
+## 5. Kết quả trên dữ liệu công khai của BTC (Qwen3.7 Flash, 6 luồng)
 
-| Bộ dữ liệu | Exact Match |
-|---|---|
-| Public 1 của BTC (20 câu) | 18/20 |
-| Public 2 của BTC (30 câu) | 29/30 (30/30 ở lần chạy trước; câu 20 có hai cách hiểu) |
-| Bộ robustness tự xây (26 câu) | 26/26 |
-| Bộ nhiều file tự xây (37 câu) | 35/37 |
-| RealHiTBench, 300 câu Fact Checking + Numerical Reasoning trên các bảng **không** có trong bộ public (chưa dùng để tinh chỉnh) | 62.0% so khớp chính xác; 73.0% theo thước đo EM của RealHiTBench (bản trước: 59.3% / 69.7%) |
+| Bộ dữ liệu | Exact Match | Thời gian cả bộ | Trung vị / chậm nhất mỗi câu | Token/câu | Chi phí/câu (TB / tối đa) |
+|---|---|---|---|---|---|
+| Public 1 (20 câu) | 18/20 | 107 s (85 s trong Docker) | 5.5 s / 92 s | 16k | $0.0007 / $0.0030 |
+| Public 2 (30 câu) | 29/30 | 205 s | 7.8 s / 98 s | 16k | $0.0007 / $0.0025 |
 
-Trên RealHiTBench: trung bình 38.5 giây, 3.7 lần gọi LLM và khoảng 21k token mỗi câu (≈ $0.001–0.003/câu theo giá niêm yết của OpenRouter, giới hạn của đề là $0.10/câu). Bộ nhớ đỉnh của cả lượt chạy đo được dưới 1 GB (xem mục 6).
+Chi phí tính theo giá niêm yết của OpenRouter ($0.03/M token vào, $0.13/M token ra); giới hạn của đề là $0.10/câu. Ở Public 2, câu 20 có hai cách hiểu và kết quả thay đổi giữa các lần chạy (có lần đạt 30/30).
 
 ## 6. Tuân thủ điều kiện của đề
 
@@ -110,9 +109,9 @@ Trên RealHiTBench: trung bình 38.5 giây, 3.7 lần gọi LLM và khoảng 21k
 | Dockerfile ở thư mục gốc, Linux amd64, không GPU, có `ENTRYPOINT` | `Dockerfile`, `FROM --platform=linux/amd64 python:3.11-slim`, `ENTRYPOINT ["python", "/app/run.py"]` |
 | `submission.csv` đúng hai cột, mỗi id một dòng, chỉ đáp án cuối | `run.py`: loại id trùng, ghi file ngay từ đầu và sau mỗi câu, đáp án một dòng |
 | Qwen3.7 Flash qua OpenRouter, khóa ngoài mã nguồn | `excelqa/llm.py`: model mặc định `qwen/qwen3.7-flash`, khóa chỉ đọc từ biến môi trường / `.env` / `--api-key` |
-| ≤ $0.10/câu kể cả retry | `max_tokens` 6000 mỗi lần gọi, chỉ retry lỗi mạng/quá tải. Trên 1.001 câu đã chạy: nhiều nhất 9 lần gọi; câu đắt nhất ≈ $0.009 (148k token vào, 33k ra), trung bình ≈ $0.001–0.003 |
-| ≤ 40 phút cho 20 câu (6 vCPU) | 6 câu song song; ngân sách thời gian mềm 32 phút cho 20 câu, sau đó không leo thang nữa |
-| ≤ 1 GB khi chạy | Workbook được parse một lần; mỗi chương trình sinh ra bị giới hạn 128 MB thêm; thư viện số chạy 1 luồng |
+| ≤ $0.10/câu kể cả retry | `max_tokens` 6000 mỗi lần gọi, chỉ retry lỗi mạng/quá tải; tối đa khoảng 9 lần gọi mỗi câu. Trên hai bộ public: trung bình $0.0007, cao nhất $0.003 mỗi câu |
+| ≤ 40 phút cho 20 câu (6 vCPU) | 6 câu song song; Public 1 chạy hết 85–107 s. Ngân sách thời gian mềm 32 phút cho 20 câu, sau đó không leo thang nữa |
+| ≤ 1 GB khi chạy | Đã chạy Public 1 trong Docker với `--memory=1g`; ảnh 309 MB. Workbook được parse một lần; mỗi chương trình sinh ra bị giới hạn 128 MB thêm; thư viện số chạy 1 luồng |
 | ZIP ≤ 100 MB | Mã nguồn khoảng 0.2 MB, không kèm dữ liệu |
 
 ## 7. Cấu trúc thư mục
@@ -127,11 +126,11 @@ excelqa/
   solver.py              DataFrame + bản đồ, các ứng viên, tiến trình con thực thi, bỏ phiếu, trọng tài
   formatting.py          định dạng đáp án
 scripts/evaluate.py      chấm Exact Match
-docs/                    sơ đồ kiến trúc (draw.io), tài liệu nghiên cứu
+docs/                    sơ đồ kiến trúc (draw.io + PNG), ghi chú nghiên cứu
 ```
 
 ## 8. Giới hạn đã biết
 - Code do LLM sinh chạy bằng `exec()` trong tiến trình con: cô lập lỗi, có timeout và giới hạn bộ nhớ, nhưng **chưa phải sandbox bảo mật**.
 - Parser dùng heuristic; layout quá lạ có thể bị đọc sai cấu trúc.
-- Kết quả của LLM dao động giữa các lần chạy (khoảng ±3 điểm trên 200 câu), nhất là ở các câu chỉ thắng với ít phiếu.
+- Kết quả của LLM có thể dao động giữa các lần chạy, nhất là ở các câu chỉ thắng với ít phiếu.
 - Câu hỏi cần ngầm hiểu quy ước riêng của người ra đề (không nêu trong câu hỏi) có thể bị trả lời theo cách hiểu khác.
