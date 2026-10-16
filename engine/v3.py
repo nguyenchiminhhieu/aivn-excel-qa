@@ -1,6 +1,6 @@
 """v3 reasoning layer: model-native data interface + heterogeneous candidates + agreement gating.
 
-Design (each choice is backed by a measured failure mode, see docs/REPORT.md):
+Design (each choice is backed by a failure mode measured during development):
   * Tables are handed to generated code as plain pandas DataFrames (T0, T1, ...) with readable column names,
     row-path columns and flags, plus a long `facts` frame with A1 cell references. No bespoke object API:
     a small model writes idiomatic pandas far more reliably than calls to an unfamiliar interface.
@@ -40,13 +40,12 @@ EXEC_TIMEOUT = 25
 MAX_ROWS_FULL = 150            # tables up to this size are shown with all values
 DIRECT_MAX_CHARS = 45000       # direct reading only when the whole map fits comfortably
 RESERVED = {"row", "path", "label", "is_summary", "has_children", "depth"}
-_STATE: dict[str, dict] = {}   # key -> {"ir", "frames", "facts", "map", "text", "values"}
+_STATE: dict[str, dict] = {}   # key -> {"ir", "frames", "facts", "map", "text"}
 
 
 # =============================================================================== semantic layer
 def column_kind(t: TableIR, col) -> tuple[str, bool]:
     """(kind, additive) for a value column, from header text, caption and values."""
-    h = (" ".join(col.path) + " " + " ".join(t.caption)).lower()
     head = " ".join(col.path).lower()
     vals = [r.values.get(col.id) for r in t.rows]
     nums = [v for v in vals if is_num(v)]

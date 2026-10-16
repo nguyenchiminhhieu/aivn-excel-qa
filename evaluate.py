@@ -1,11 +1,19 @@
-"""Exact-match scoring of a submission against a reference CSV, with a per-question diff."""
+"""Exact-match scoring: python evaluate.py <submission.csv> <gold.csv | answers.json>
+
+Gold can be a CSV with columns id,answer (e.g. BTC's sample_submission.csv) or a JSON list of {"id", "answer"}
+(e.g. BTC's answers.json). Ids are compared as strings; answers after stripping surrounding whitespace, exactly.
+"""
 import csv
+import json
 import sys
 
 
-def load(p):
-    with open(p, encoding="utf-8-sig") as fh:
-        return {r["id"]: r["answer"].strip() for r in csv.DictReader(fh)}
+def load(path):
+    if path.endswith(".json"):
+        with open(path, encoding="utf-8-sig") as fh:
+            return {str(r["id"]): str(r["answer"]).strip() for r in json.load(fh)}
+    with open(path, encoding="utf-8-sig") as fh:
+        return {str(r["id"]): (r["answer"] or "").strip() for r in csv.DictReader(fh)}
 
 
 if __name__ == "__main__":
@@ -16,4 +24,4 @@ if __name__ == "__main__":
         ok += p == g
         if p != g:
             print(f"{k}: pred={p!r} gold={g!r}")
-    print(f"EM = {ok}/{len(gold)} = {ok / len(gold):.1%}")
+    print(f"EM = {ok}/{len(gold)} = {ok / max(len(gold), 1):.1%}")

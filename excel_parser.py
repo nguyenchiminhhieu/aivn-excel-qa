@@ -12,6 +12,7 @@ Pipeline per sheet:
 """
 from __future__ import annotations
 
+import ast
 import datetime as dt
 import math
 import re
@@ -166,6 +167,26 @@ def _mark_parents(rows: list[dict]):
 
 
 # ----------------------------------------------------------------------------- formulas
+_SAFE_NODES = (ast.Expression, ast.BinOp, ast.UnaryOp, ast.Compare, ast.Call, ast.Name, ast.Load, ast.Constant,
+               ast.List, ast.Tuple, ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Pow, ast.Mod, ast.USub, ast.UAdd,
+               ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE)
+
+
+def _safe_formula(tree, allowed_names: set) -> bool:
+    """Workbook formulas are untrusted: allow only numbers/strings, arithmetic, comparisons and calls to the
+    whitelisted spreadsheet functions (no attributes, subscripts, comprehensions or lambdas)."""
+    for node in ast.walk(tree):
+        if not isinstance(node, _SAFE_NODES):
+            return False
+        if isinstance(node, ast.Name) and node.id not in allowed_names:
+            return False
+        if isinstance(node, ast.Call) and (not isinstance(node.func, ast.Name) or node.keywords):
+            return False
+        if isinstance(node, ast.Constant) and not isinstance(node.value, (int, float, str)):
+            return False
+    return True
+
+
 def _flat(a):
     out = []
     for x in a:
@@ -221,7 +242,10 @@ class _FormulaEval:
             for r in range(r1, r2 + 1)
             for c in range(column_index_from_string(c1), column_index_from_string(c2) + 1)]
         try:
-            return eval(expr, {"__builtins__": {}}, env)  # noqa: S307 - restricted namespace
+            tree = ast.parse(expr, mode="eval")
+            if not _safe_formula(tree, set(env)):
+                return None                        # anything beyond arithmetic on cells is refused
+            return eval(compile(tree, "<formula>", "eval"), {"__builtins__": {}}, env)  # noqa: S307
         except Exception:  # noqa: BLE001
             return None
 

@@ -14,20 +14,34 @@ import time
 from collections import Counter
 from pathlib import Path
 
-from openai import OpenAI
+from openai import AuthenticationError, NotFoundError, OpenAI, PermissionDeniedError
 
 
 def _load_dotenv():
     """Read KEY=VALUE lines from .env (current directory, then the project folder); real env vars win."""
     for p in (Path.cwd() / ".env", Path(__file__).resolve().parent / ".env"):
         if p.is_file():
-            for k, v in re.findall(r'^\s*([A-Za-z_]\w*)\s*=\s*"?([^"\n]*)"?', p.read_text(encoding="utf-8"), re.M):
-                os.environ.setdefault(k, v.strip())
+            for line in p.read_text(encoding="utf-8").splitlines():
+                m = re.match(r"^[ \t]*([A-Za-z_]\w*)[ \t]*=[ \t]*(.*?)[ \t]*$", line)
+                if not m or line.lstrip().startswith("#"):
+                    continue
+                k, v = m.group(1), m.group(2).strip().strip('"').strip("'")
+                if v:
+                    os.environ.setdefault(k, v)
 
 
 _load_dotenv()
 MODEL = os.environ.get("QA_MODEL", "qwen/qwen3.7-flash")
 _NO_TEMPERATURE: set = set()          # (model, effort) pairs that reject a custom temperature
+
+
+def check_access(client: OpenAI) -> None:
+    """One tiny request before the run, so a wrong key fails loudly instead of producing empty answers."""
+    try:
+        client.chat.completions.create(model=MODEL, messages=[{"role": "user", "content": "ok"}], max_tokens=1,
+                                       extra_body={"reasoning": {"effort": "none"}})
+    except (AuthenticationError, PermissionDeniedError, NotFoundError) as e:
+        raise SystemExit(f"OpenRouter rejected the request for model {MODEL}: {e}") from None
 
 
 def make_client() -> OpenAI:

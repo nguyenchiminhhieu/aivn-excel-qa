@@ -17,7 +17,7 @@ from collections import Counter
 from pathlib import Path
 
 from engine import v3
-from llm import make_client
+from llm import check_access, make_client
 
 
 def _files(data: Path, q: dict) -> list[str]:
@@ -52,6 +52,7 @@ def main():
             print(f"[{q['id']}] cannot read workbook: {e}")
 
     client = make_client()
+    check_access(client)
 
     def one(q):
         usage, start = Counter(), time.time()
@@ -86,9 +87,14 @@ def main():
             for q in queries:
                 fh.write(json.dumps({"id": q["id"], "query": q["query"], "answer": answers.get(q["id"]),
                                      **traces.get(q["id"], {})}, ensure_ascii=False, default=str) + "\n")
+    empty = sum(1 for q in queries if not answers.get(q["id"]))
+    if empty:
+        print(f"warning: {empty}/{len(queries)} questions have an empty answer (use --trace to see why)")
     tok = sum(t.get("prompt_tokens", 0) + t.get("completion_tokens", 0) for t in traces.values())
     print(f"done {len(queries)} questions in {time.time() - t0:.1f}s; "
           f"tokens/question {tok / max(len(queries), 1):.0f} -> {args.out}")
+    if queries and empty == len(queries):
+        raise SystemExit(2)
 
 
 if __name__ == "__main__":
