@@ -49,13 +49,28 @@ def strip_footnote(s: str) -> str:
     return FOOTNOTE_RE.sub("", s).strip()
 
 
-def to_number(v):
-    """'$1,234' -> 1234, '(5,000)' -> -5000, '12.5%' -> 12.5, 'n/a' -> None; other values unchanged."""
+SYMBOLS = {"+", "++", "+++", "-", "−", "–", "--", "x", "X", "✓", "✔", "✗", "√"}
+
+
+class Sym(str):
+    """A cell of a +/- or checkbox matrix: a categorical value, not a label."""
+
+
+def to_number(v, keep_symbols: bool = False):
+    """'$1,234' -> 1234, '(5,000)' -> -5000, '12.5%' -> 12.5, 'n/a' -> None; other values unchanged.
+    keep_symbols: in +/- or checkbox matrices a dash is a value (negative), not a missing marker."""
     if not isinstance(v, str):
         return v
     s = v.strip()
+    if keep_symbols and s in SYMBOLS:
+        return Sym(s)
     if s.lower() in MISSING or re.fullmatch(r"\(\s*-\s*\d+\s*-\s*\)|\([A-Z]{1,2}\)", s):
         return None
+    if re.fullmatch(r"[-+−]?0,\d+|[-+−]?\d+,\d{1,2}", s):           # decimal comma: "96,1", "0,403"
+        try:
+            return float(s.replace("−", "-").replace(",", "."))
+        except ValueError:
+            return v
     if re.fullmatch(r"[-+]?\d{1,3}([ \u00a0\u202f]\d{3})+(\.\d+)?", s):     # "1 200", "12 345.5"
         s = re.sub(r"[ \u00a0\u202f]", "", s)
     if not NUM_RE.match(s) or (s.count(",") and not re.search(r"\d{1,3}(,\d{3})+", s)):
@@ -297,6 +312,8 @@ def _read_sheet(ws, ws_cached, ev: _FormulaEval) -> list[list[Cell]]:
         if d.hidden:
             idx = column_index_from_string(k)
             hidden_cols |= set(range(d.min or idx, (d.max or idx) + 1))
+    plus = sum(1 for row in ws.iter_rows() for c in row if isinstance(c.value, str) and c.value.strip() in ("+", "++", "+++"))
+    symbol_sheet = plus >= 3
     grid = []
     for row in ws.iter_rows():
         out = []
@@ -305,6 +322,8 @@ def _read_sheet(ws, ws_cached, ev: _FormulaEval) -> list[list[Cell]]:
             if isinstance(v, str) and v.startswith("="):
                 cached = ws_cached[c.coordinate].value if ws_cached is not None else None
                 v = cached if cached is not None else ev.cell(ws.title, c.coordinate)
+            elif type(v).__name__ in ("ArrayFormula", "DataTableFormula"):     # array formula: cached result only
+                v = ws_cached[c.coordinate].value if ws_cached is not None else None
             if v is not None and not isinstance(v, (str, int, float, bool, dt.datetime, dt.date, dt.time)):
                 v = str(v)                         # rich text, array formulas, errors
             indent = 0.0
@@ -313,7 +332,7 @@ def _read_sheet(ws, ws_cached, ev: _FormulaEval) -> list[list[Cell]]:
             if c.alignment is not None and c.alignment.indent:
                 indent += float(c.alignment.indent)
             fmt = c.number_format or ""
-            v = to_number(v)
+            v = to_number(v, keep_symbols=symbol_sheet)
             out.append(Cell(v, indent, bool(c.font and c.font.b), "%" in fmt and is_num(v)))
         if row and row[0].row in hidden_rows:
             out = [Cell() for _ in out]
@@ -346,7 +365,18 @@ def _column_blocks(grid) -> list[tuple[int, int]]:
         elif start is not None:
             blocks.append((start, c))
             start = None
-    return blocks
+    merged = []
+    for b in blocks:
+        if merged:
+            a0, a1 = merged[-1]
+            label_only = a1 - a0 == 1 and not any(is_value(row[a0].v) for row in grid)
+            aligned = sum(1 for row in grid if not _empty(row[a0].v) and any(not _empty(x.v) for x in row[b[0]:b[1]]))
+            texts = sum(1 for row in grid if not _empty(row[a0].v))
+            if label_only and b[0] - a1 == 1 and texts and aligned >= 0.6 * texts:
+                merged[-1] = (a0, b[1])
+                continue
+        merged.append(b)
+    return merged
 
 
 # ----------------------------------------------------------------------------- classification
@@ -366,13 +396,15 @@ def _classify(cells: list[Cell]) -> str:
     if len(vals) > 1 and len(filled) == len(vals) and len({clean_text(v) for v in filled}) == 1 \
             and not is_value(filled[0]):
         return "caption"                                   # one merged text across the whole block
-    nums = [v for v in filled if is_value(v)]
+    nums = [v for v in filled if is_value(v) or isinstance(v, Sym)]
     if len(nums) == 1 and is_num(nums[0]) and float(nums[0]) == int(nums[0]) and 0 <= nums[0] < 100 \
             and len(filled) <= 3 and any(isinstance(v, str) and len(clean_text(v)) > 20 for v in filled):
         return "caption"                                   # "2 | Output per job: ..." table-number + title
+    if len(filled) == 1 and is_year(filled[0]) and not _empty(vals[0]):
+        return "label_only"                                # a lone year in the label column: a section label
     if nums and all(is_year(v) for v in nums) and (
-            _empty(vals[0]) or len(set(nums)) == 1 or (len(set(nums)) >= 2 and sorted(nums) in (nums, nums[::-1]))):
-        return "header"                                    # year banner / year column headers
+            _empty(vals[0]) or len(set(nums)) == 1 or len(set(nums)) >= 2):
+        return "header"                                    # year banner / year column headers (also repeating cycles)
     if nums:
         return "data"
     if len(filled) == 1 and not _empty(vals[0]):
@@ -599,7 +631,8 @@ def _new_table(sheet, grid, header_rows, first_data, captions, c0) -> Table:
             continue
         periodish = col and sum(is_year(v) or (isinstance(v, str) and bool(PERIOD_RE.match(clean_text(v))))
                                 for v in col) >= 0.8 * len(col)
-        if col and (sum(isinstance(v, str) for v in col) >= 0.6 * len(col) or (not lab and periodish)):
+        texts = sum(isinstance(v, str) and not isinstance(v, Sym) for v in col)
+        if col and (texts >= 0.6 * len(col) or (not lab and periodish)):
             lab.append(c)
         else:
             break
@@ -636,9 +669,27 @@ def _new_table(sheet, grid, header_rows, first_data, captions, c0) -> Table:
     t._lab, t._vals = lab, vals
     t._indent_col = next((c for c in vals if "indent" in col_paths[c + c0].lower()), None)
     t._indented = bool(lab) and len({row[lab[-1]].indent for row in data_rows if not _empty(row[lab[-1]].v)}) > 1
-    t.pct_cols = {c + c0 for c in vals if any(row[c].pct for row in data_rows)}
+    own = data_rows[:max(3, min(len(data_rows), 30))]
+    t.pct_cols = {c + c0 for c in vals
+                  if sum(row[c].pct for row in own) >= 0.5 * max(1, sum(is_num(row[c].v) for row in own))
+                  and any(row[c].pct for row in own)}
     t._sig = [tuple(clean_text(c.v) for c in grid[h]) for h in header_rows]
     return t
+
+
+def _strip_glued_footnotes(t, ids: set):
+    """'Frozen4' -> 'Frozen' when the sheet has a footnote line starting with '4'."""
+    if not ids:
+        return
+    rx = re.compile(r"(?<=[a-z)\]])(" + "|".join(sorted(ids, key=len, reverse=True)) + r")(?:,(\d{1,2}))*$")
+
+    def fix(x):
+        return rx.sub("", x) if isinstance(x, str) else x
+    for r in t.rows:
+        r["labels"] = [fix(x) for x in r["labels"]]
+        if r["context"]:
+            r["context"] = " > ".join(fix(p) for p in r["context"].split(" > "))
+    t.col_paths = {k: " > ".join(fix(p) for p in v.split(" > ")) for k, v in t.col_paths.items()}
 
 
 def parse_workbook(path: str) -> list[Table]:
@@ -648,14 +699,17 @@ def parse_workbook(path: str) -> list[Table]:
     except Exception:  # noqa: BLE001
         wbc = None
     ev = _FormulaEval(wb)
-    tables = []
+    tables, notes = [], {}
     for ws in wb.worksheets:
         if ws.sheet_state != "visible":
             continue
         grid = _read_sheet(ws, wbc[ws.title] if wbc else None, ev)
+        notes[ws.title] = {m.group(1) for row in grid for c in row if isinstance(c.v, str)
+                           for m in [re.match(r"^\s*(\d{1,2})\s*[A-Z][a-z]", c.v)] if m}
         for b0, b1 in _column_blocks(grid):
             tables += _parse_block(ws.title, [row[b0:b1] for row in grid], b0)
     for t in tables:
+        _strip_glued_footnotes(t, notes.get(t.sheet, set()))
         _nest_intervals(t.rows)
         if t._indent_col is None and not t._indented:
             _nest_by_sums(t.rows, [c for c in t.value_cols if c not in t.pct_cols])

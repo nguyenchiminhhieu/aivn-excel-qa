@@ -35,7 +35,7 @@ from excel_parser import _fmt, is_num, strip_footnote  # noqa: E402
 from formatting import format_answer  # noqa: E402
 from llm import extract_code as _extract_code, llm_call  # noqa: E402
 
-from .ground import expected_type, ground, type_ok  # noqa: E402
+from .ground import answer_template, expected_type, ground, type_ok  # noqa: E402
 from .ir import SUSPICIOUS, TableIR, build_many  # noqa: E402
 
 EXEC_TIMEOUT = 25
@@ -45,7 +45,7 @@ RESERVED = {"row", "sheet", "path", "label", "is_summary", "has_children", "dept
 _STATE: dict[str, dict] = {}   # key -> {"ir", "frames", "facts", "map", "text"}
 
 
-# =============================================================================== semantic layer
+#  semantic layer
 BIRTH_RE = re.compile(r"birth|\bdob\b|\bborn\b|ngày sinh|năm sinh|出生|생년월일|생일", re.I)
 
 
@@ -192,7 +192,7 @@ def unit_hint(t: TableIR) -> str:
     return m.group(0).strip(" ([") if m else ""
 
 
-# =============================================================================== data interface
+#  data interface
 def _names(t: TableIR) -> dict[str, str]:
     leaves = [c.label for c in t.cols]
     out, used = {}, set(RESERVED) | {h for h in t.label_headers if h}
@@ -313,11 +313,12 @@ def load(paths: list[str]) -> str:
         text = " ".join(_norm(x) for t in ir for x in [*(p for r in t.rows for p in r.path), *(l for r in t.rows for l in r.labels),
                                                        *(p for c in t.cols for p in c.path),
                                                        *(v for r in t.rows for v in r.values.values() if isinstance(v, str))])
-        _STATE[key] = {"ir": ir, "frames": dfs, "facts": facts, "map": render(ir, dfs), "text": f" {text} "}
+        raw = " | ".join(str(v) for t in ir for r in t.rows for v in [*r.labels, *r.values.values()] if isinstance(v, str))
+        _STATE[key] = {"ir": ir, "frames": dfs, "facts": facts, "map": render(ir, dfs), "text": f" {text} ", "raw": raw}
     return key
 
 
-# =============================================================================== helpers exposed to programs
+#  helpers exposed to programs
 def _norm(s) -> str:
     return re.sub(r"\s+", " ", re.sub(r"[^\w%.]+", " ", str(s).lower())).strip()
 
@@ -465,10 +466,31 @@ def decimals_from_question(q: str):
     return None
 
 
+def _clean_label(v, question: str):
+    """Answers must never carry internal joiners: 'parent > child' -> the leaf, 'a · b' -> the most specific part
+    (skipping year/number/code parts and parts the question already names)."""
+    if not isinstance(v, str) or (" · " not in v and " > " not in v):
+        return v
+    parts = [p.strip() for p in re.split(r" > ", v) if p.strip()]
+    leaf = parts[-1] if parts else v
+    segs = [p.strip() for p in leaf.split(" · ") if p.strip()]
+    if len(segs) > 1:
+        qn = _norm(question)
+        keep = [x for x in segs if not re.fullmatch(r"[\d\s.,/-]+|[A-Z]{0,3}-?\d+", x) and _norm(x) not in qn]
+        segs = keep or segs
+    return segs[0]
+
+
 def render_answer(value, question: str, spec: dict | None) -> str:
+    value = [_clean_label(x, question) for x in value] if isinstance(value, list) else _clean_label(value, question)
     d = decimals_from_question(question)
-    if d is None and spec:
-        d = spec.get("decimals") if isinstance(spec.get("decimals"), int) else None
+    spec_d = spec.get("decimals") if spec and isinstance(spec.get("decimals"), int) else None
+    if d is None and spec_d is not None:
+        # precision chosen by the model (not the question): round, but never pad with trailing zeros
+        num = value if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+        if num is not None and not math.isnan(float(num)):
+            r = round(float(num), spec_d)
+            return str(int(r)) if r == int(r) else f"{r:.{spec_d}f}".rstrip("0").rstrip(".")
     num = None
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         num = float(value)
@@ -527,6 +549,11 @@ def direct_candidate(client, key, question, effort, usage, focus=""):
             "answer": ans, "printed": (text or "")[-1200:]}
 
 
+def _verbatim(num: str, raw: str) -> bool:
+    """Is this number written exactly so inside a text cell ("DEFICIT -15.00")? Then that is its surface form."""
+    return bool(re.search(r"(?<![\d.])" + re.escape(str(num)) + r"(?!\.?\d)", raw))
+
+
 def _grounded(ans, question, text) -> bool:
     items = ans if isinstance(ans, list) else [ans]
     for it in items:
@@ -546,7 +573,7 @@ def solve(client, paths: list[str], question: str, usage: Counter, deadline: flo
     direct_ok = len(st["map"]) <= DIRECT_MAX_CHARS and all(len(t.rows) <= MAX_ROWS_FULL for t in st["ir"])
     focus = ground(st["ir"], {t.id: _names(t) for t in st["ir"]}, question,
                    groups={t.id: _table_info(t)["groups"] for t in st["ir"]})
-    etype = expected_type(question)
+    etype, tmpl = expected_type(question), answer_template(question)
     trace["focus_chars"], trace["expected_type"] = len(focus), etype
 
     def finalize(cands):
@@ -555,9 +582,12 @@ def solve(client, paths: list[str], question: str, usage: Counter, deadline: flo
             ok = c["status"] == "ok" and c["answer"] not in (None, "", []) and \
                 not (isinstance(c["answer"], float) and math.isnan(c["answer"]))
             c["final"] = render_answer(c["answer"], question, c.get("spec", {}) and c["spec"].get("output") if c.get("spec") else spec) if ok else None
-            c["clean"] = ok and _grounded(c["answer"], question, st["text"])
-            c["type_ok"] = type_ok(c["final"], etype) if ok else False
-        if any(c["clean"] and c["type_ok"] for c in cands):   # answer-type filter (only when something survives)
+            fills = tmpl.match(str(c["final"])) if ok and tmpl else None
+            # an answer composed in the question's own template is grounded when each filled slot is
+            c["clean"] = ok and (_grounded(list(fills.groups()), question, st["text"]) if fills
+                                 else _grounded(c["answer"], question, st["text"]))
+            c["type_ok"] = (type_ok(c["final"], etype) and (not tmpl or bool(fills))) if ok else False
+        if any(c["clean"] and c["type_ok"] for c in cands):   # answer-type/template filter (only when something survives)
             for c in cands:
                 c["clean"] = c["clean"] and c["type_ok"]
         return cands
@@ -587,11 +617,45 @@ def solve(client, paths: list[str], question: str, usage: Counter, deadline: flo
         jobs.append(lambda: direct_candidate(client, key, question, "low", usage, focus))
     slow = run(jobs)
     pool = [c for c in fast + slow if c["clean"]] or [c for c in fast + slow if c["final"]]
+    if any(c["type_ok"] for c in pool):          # type/template filter over both stages together
+        pool = [c for c in pool if c["type_ok"]]
     if not pool:
         trace["decision"] = "no candidate"
         return "", trace
+    # Vote on a canonical form (numbers rounded, case/punctuation folded) so 134017.89 and 134017.9 agree.
+    def canon(f):
+        t = str(f).strip()
+        if re.fullmatch(r"-?\d+(\.\d+)?", t):
+            return f"#{round(float(t), 1)}"
+        return _norm(t)
+    for c in pool:
+        c["canon"] = canon(c["final"])
+        raw_ans = c["answer"].strip() if isinstance(c["answer"], str) else None
+        if raw_ans and decimals_from_question(question) is None and c["canon"].startswith("#") \
+                and canon(raw_ans) == c["canon"] and _verbatim(raw_ans, st["raw"]) and not _verbatim(c["final"], st["raw"]):
+            c["final"] = raw_ans                 # keep the table's own writing of the number ("-15.00")
+    # an answer whose tokens are a subset of another candidate that is an exact table string joins that group
+    exact = {c["canon"] for c in pool if f" {c['canon']} " in st["text"]}
+    for c in pool:
+        if c["canon"] not in exact:
+            sup = [e for e in exact if set(c["canon"].split()) < set(e.split())]
+            if len(sup) == 1:
+                c["canon"] = sup[0]
+    rep_of = {}
+    for c in pool:                               # representative surface form: an exact table string if any
+        cur = rep_of.get(c["canon"])
+        if cur is None or (c["canon"] in exact and _norm(c["final"]) == c["canon"] and _norm(cur) != c["canon"]) \
+                or (c["canon"].startswith("#") and _verbatim(c["final"], st["raw"]) and not _verbatim(cur, st["raw"])):
+            rep_of[c["canon"]] = c["final"]
+    for c in pool:
+        c["final"] = rep_of[c["canon"]]
     votes = Counter(c["final"] for c in pool)
     top = votes.most_common(1)[0][0]
+    ranked = votes.most_common()
+    kinds_top = {c["kind"] for c in pool if c["final"] == top}
+    if len(ranked) > 1 and ranked[0][1] > ranked[1][1] and ranked[0][1] >= 2 and len(kinds_top) > 1:
+        trace["decision"] = f"stage2: strict plurality {ranked[0][1]}/{len(pool)} across paradigms"
+        return top, trace
 
     def plurality(cnt: Counter):
         (a, n), *rest = cnt.most_common() + [(None, 0)]

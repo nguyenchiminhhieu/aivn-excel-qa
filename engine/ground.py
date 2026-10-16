@@ -109,12 +109,30 @@ def ground(ir, frames_names: dict, question: str, max_rows: int = 20, max_cols: 
 def expected_type(question: str) -> str | None:
     """Coarse answer type requested by the question: 'yesno', 'number', 'list' or None."""
     q = question.lower()
-    if re.search(r"\byes or no\b|\byes/no\b|'yes' or 'no'|\"yes\" or \"no\"|có hoặc không|예 또는 아니오|是或否", q):
+    # A generic instruction listing several answer forms ("a number, an entity name, Yes or No, or a list")
+    # does not make the question a yes/no question.
+    generic = re.search(r"(number|entity|name|list)[^.]{0,60}\byes or no\b|\byes or no\b[^.]{0,40}(list|number)", q)
+    if not generic and re.search(r"\byes or no\b|\byes/no\b|'yes' or 'no'|\"yes\" or \"no\"|có hoặc không|예 또는 아니오|是或否", q):
         return "yesno"
+    if generic:
+        return None
     if re.search(r"separated by (a )?comma|as two |as three |comma and one space|\blist\b|`[^`]*,[^`]*`", q):
         return "list"
     if re.search(r"\binteger\b|decimal place|\bhow many\b|chữ số thập phân|số nguyên|소수점|정수|小数|整数", q):
         return "number"
+    return None
+
+
+def answer_template(question: str):
+    """An explicit answer template with placeholders, e.g. '(xxx in xxx)', 'Answer as "Decreased from xxx to xxx"',
+    'xx:xx'. Returns a regex whose groups are the placeholder fills, or None."""
+    for m in re.finditer(r'"([^"]*)"|\(([^()]*)\)|\b(\S*\b(?:x{2,}|X{2,})\b\S*)', question):
+        seg = next(g for g in m.groups() if g is not None)
+        seg = re.sub(r"^\s*(answer\s+(as|with)|format:?|in the form)\s+", "", seg.strip(), flags=re.I).strip("\"' ")
+        if not re.search(r"\b(?:x{2,}|X{2,})\b", seg) or re.match(r"(e\.g\.|for example|such as)", seg, re.I):
+            continue
+        pieces = re.split(r"\b(?:x{2,}|X{2,})\b", seg)
+        return re.compile("(.+?)".join(re.escape(p) for p in pieces) + r"\s*$", re.I)
     return None
 
 
