@@ -13,6 +13,7 @@ Design (each choice is backed by a failure mode measured during development):
 """
 from __future__ import annotations
 
+import ast
 import concurrent.futures as cf
 import contextlib
 import datetime as dt
@@ -363,12 +364,31 @@ def col(df: pd.DataFrame, *terms) -> str:
     return min(cands, key=len)
 
 
-def _safe_int(x=0, *args):
-    """int() for generated programs: a float within 1e-9 of an integer (spreadsheet float noise) is rounded, not
+def _safe_int(x):
+    """int(x) for generated programs: a float within 1e-9 of an integer (spreadsheet float noise) is rounded, not
     truncated (int(90.99999999998) would give 90)."""
-    if not args and isinstance(x, float) and math.isfinite(x) and abs(x - round(x)) < 1e-9:
+    if isinstance(x, float) and math.isfinite(x) and abs(x - round(x)) < 1e-9:
         return int(round(x))
-    return int(x, *args)
+    return int(x)
+
+
+class _IntCalls(ast.NodeTransformer):
+    """Rewrite one-argument calls int(x) to _safe_int(x). The name `int` itself stays the builtin type, so
+    isinstance(v, int), .astype(int), dtype=int, int(s, 16) and int(s, base=16) keep working."""
+
+    def visit_Call(self, node):
+        self.generic_visit(node)
+        if isinstance(node.func, ast.Name) and node.func.id == "int" and len(node.args) == 1 \
+                and not node.keywords and not isinstance(node.args[0], ast.Starred):
+            node.func = ast.copy_location(ast.Name("_safe_int", ast.Load()), node.func)
+        return node
+
+
+def _compile(code: str):
+    try:
+        return compile(ast.fix_missing_locations(_IntCalls().visit(ast.parse(code))), "<program>", "exec")
+    except SyntaxError:
+        return code                                 # exec raises the same SyntaxError, reported to the fix-up turn
 
 
 def _run(code: str, key: str, q):
@@ -377,14 +397,14 @@ def _run(code: str, key: str, q):
 
     import numpy as np
     g = {"pd": pd, "np": np, "re": re, "math": math, "datetime": datetime, "find_rows": find_rows, "col": col,
-         "int": _safe_int,
+         "_safe_int": _safe_int,
          "years_between": years_between, "days_between": days_between,
          "tables": dict(st["frames"]), "facts": st["facts"].copy()}
     g.update({k: v.copy() for k, v in st["frames"].items()})
     buf = io.StringIO()
     try:
         with contextlib.redirect_stdout(buf):
-            exec(code, g)
+            exec(_compile(code), g)
         ans = g.get("answer")
         if hasattr(ans, "tolist"):
             ans = ans.tolist()
