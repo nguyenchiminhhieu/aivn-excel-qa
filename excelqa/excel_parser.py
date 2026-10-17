@@ -28,6 +28,7 @@ COMPOUND_PREFIXES = {"self", "non", "full", "part", "year", "well", "co", "ex", 
 GROUP_RE = re.compile(r"^(total|all)\b", re.I)   # generic: "Total ...", "All ..." rows open a group
 CODE_RE = re.compile(r"^[A-Z]{0,4}\d{1,6}(\s*[-–]\s*[A-Z]{0,4}\d{1,6})?[A-Z]?$|^[A-Z]{2,4}[0-9][A-Z0-9]{0,4}$")
 PERIOD_RE = re.compile(r"^((19|20)\d{2}(\s*(Q[1-4]|H[12]|[A-Z][a-z]{2,8}\.?))?|Q[1-4]|H[12])$")
+GRAND_RE = re.compile(r"^(grand|overall)\s+total\b|^total,?\s+all\b", re.I)   # a table-wide total row
 TOTAL_RE = re.compile(r"\b(total|subtotal|sub-total|grand total|all items)\b", re.I)
 MISSING = {"-", "–", "—", "n/a", "na", "nan", "(x)", "(na)", "..", "...", "(d)", "(z)", "null"}
 NUM_RE = re.compile(r"^\(?[-+−]?[$€£¥₫]?\s*[-+−]?\d[\d,]*(\.\d+)?\s*%?\)?$")
@@ -101,6 +102,18 @@ def _empty(v) -> bool:
     return v is None or (isinstance(v, str) and not v.strip())
 
 
+def _snap(v):
+    """Formula results carry binary float noise (7.99999999999999 hours); snap it to 9 decimals.
+    Only applied to formula-computed values, never to literal cells. The tolerance (1e-12, relative above 1)
+    is far above accumulated rounding noise (~1e-15 relative) yet leaves genuine small fractions
+    (0.0167808219...) untouched."""
+    if isinstance(v, float) and math.isfinite(v):
+        r = round(v, 9)
+        if abs(v - r) <= 1e-12 * max(1.0, abs(v)):
+            return r + 0.0                    # + 0.0: no "-0" from tiny negative noise
+    return v
+
+
 _INTERVAL_PATTERNS = [
     (re.compile(r"^(\d+(?:\.\d+)?)\s*(?:to|-|–)\s*(\d+(?:\.\d+)?)\b", re.I), lambda m: (float(m[1]), float(m[2]))),
     (re.compile(r"^(\d+(?:\.\d+)?)\s*\w*\s*(?:and|or) (?:over|older|more)\b", re.I), lambda m: (float(m[1]), math.inf)),
@@ -141,9 +154,18 @@ def _nest_intervals(rows: list[dict]):
         open_.append((iv, row))
 
 
+def _unit(v) -> float:
+    """Unit of the last decimal shown by a number: 1 for whole numbers, 0.01 for 12.34 (at most 6 decimals)."""
+    if isinstance(v, int) or float(v) == int(v):
+        return 1.0
+    return 10.0 ** -min(6, len(repr(float(v)).split("e")[0].split(".")[1]))
+
+
 def _nest_by_sums(rows: list[dict], cols: list[int], max_k: int = 8):
     """Rows whose values equal the sum of the next k rows (same context) on most numeric columns are parents of
     those rows. Recovers hierarchy lost with indentation (e.g. Manufacturing = Durable + Nondurable goods)."""
+    nums = [r["values"].get(c) for r in rows for c in cols if is_num(r["values"].get(c))]
+    fractions = bool(nums) and all(abs(x) < 1 for x in nums)   # ratios/shares: a 1.0 slack would match anything
     i = 0
     while i < len(rows):
         p = rows[i]
@@ -159,7 +181,9 @@ def _nest_by_sums(rows: list[dict], cols: list[int], max_k: int = 8):
                     if not all(is_num(x) for x in vals):
                         continue
                     n += 1
-                    ok += abs(sum(vals) - v) <= max(k * 1.0, abs(v) * 0.002)
+                    # rounding slack: one unit per child (one unit of the last decimal in an all-fraction table)
+                    slack = k * _unit(v) if fractions else k * 1.0
+                    ok += abs(sum(vals) - v) <= max(slack, abs(v) * 0.002)
                 # >= 3 additive columns must match exactly; averages/rates columns are allowed to differ.
                 if ok >= 3 and ok >= 0.6 * n and sum(abs(x) for x in pv.values()) > 0:
                     path = " > ".join(x for x in (p["context"], p["labels"][-1]) if x)
@@ -235,7 +259,7 @@ class _FormulaEval:
         except KeyError:
             return None
         if isinstance(v, str) and v.startswith("="):
-            v = self.formula(sheet, v)
+            v = _snap(self.formula(sheet, v))
         v = to_number(v)
         self.memo[key] = v
         return v
@@ -272,6 +296,7 @@ class Cell:
     indent: float = 0.0
     bold: bool = False
     pct: bool = False
+    merged: bool = False           # part of a merged range (its extent is explicit: never filled further)
 
 
 @dataclass
@@ -321,9 +346,9 @@ def _read_sheet(ws, ws_cached, ev: _FormulaEval) -> list[list[Cell]]:
             v = c.value
             if isinstance(v, str) and v.startswith("="):
                 cached = ws_cached[c.coordinate].value if ws_cached is not None else None
-                v = cached if cached is not None else ev.cell(ws.title, c.coordinate)
+                v = _snap(cached if cached is not None else ev.cell(ws.title, c.coordinate))
             elif type(v).__name__ in ("ArrayFormula", "DataTableFormula"):     # array formula: cached result only
-                v = ws_cached[c.coordinate].value if ws_cached is not None else None
+                v = _snap(ws_cached[c.coordinate].value if ws_cached is not None else None)
             if v is not None and not isinstance(v, (str, int, float, bool, dt.datetime, dt.date, dt.time)):
                 v = str(v)                         # rich text, array formulas, errors
             indent = 0.0
@@ -344,12 +369,71 @@ def _read_sheet(ws, ws_cached, ev: _FormulaEval) -> list[list[Cell]]:
         if mr.min_row - 1 >= len(grid):
             continue
         tl = grid[mr.min_row - 1][mr.min_col - 1] if mr.min_col - 1 < len(grid[mr.min_row - 1]) else Cell()
+        tl.merged = True
         for r in range(mr.min_row - 1, min(mr.max_row, len(grid))):
             for c in range(mr.min_col - 1, min(mr.max_col, len(grid[r]))):
                 if (r, c) != (mr.min_row - 1, mr.min_col - 1):
-                    grid[r][c] = Cell(tl.v, tl.indent, tl.bold, tl.pct)
+                    grid[r][c] = Cell(tl.v, tl.indent, tl.bold, tl.pct, True)
     width = max((len(r) for r in grid), default=0)
     return [r + [Cell() for _ in range(width - len(r))] for r in grid]
+
+
+def _label_like(col: list) -> bool:
+    """_new_table's label-column test: mostly text, or period-like (years, '2019 Q1')."""
+    if not col:
+        return False
+    texts = sum(isinstance(v, str) and not isinstance(v, Sym) for v in col)
+    periodish = sum(is_year(v) or (isinstance(v, str) and bool(PERIOD_RE.match(clean_text(v)))) for v in col)
+    return texts >= 0.6 * len(col) or periodish >= 0.8 * len(col)
+
+
+def _block_info(grid, a0: int, a1: int) -> dict:
+    """Rows holding values, non-empty rows and label status of the column range [a0, a1)."""
+    data = [r for r, row in enumerate(grid) if any(is_value(x.v) for x in row[a0:a1])]
+    nonempty = {r for r, row in enumerate(grid) if any(not _empty(x.v) for x in row[a0:a1])}
+    first_col = []
+    for c in range(a0, a1):
+        first_col = [grid[r][c].v for r in data if not _empty(grid[r][c].v)]
+        if first_col:
+            break
+    return {"data": data, "nonempty": nonempty, "label": _label_like(first_col), "label_only": not data}
+
+
+def _reattach(grid, left: tuple[int, int], b: tuple[int, int]) -> bool:
+    """A value block without a label column of its own belongs to the row-aligned labelled (or label-only)
+    block on its left, whatever the width of the empty spacer between them. Two value-only blocks are
+    never joined; the data rows must line up and the header bands must overlap."""
+    bi = _block_info(grid, *b)
+    if len(bi["data"]) < 2 or bi["label"]:
+        return False                                  # b has its own label column (or is a lone value / note)
+    li = _block_info(grid, *left)
+    if not li["nonempty"] or not (li["label"] or li["label_only"]):
+        return False                                  # never merge two numeric-only blocks
+    if sum(r in li["nonempty"] for r in bi["data"]) < 0.8 * len(bi["data"]):
+        return False                                  # rows are not aligned
+    b_first, b_rows = bi["data"][0], set(bi["data"])
+    l_first = min(r for r in li["nonempty"] if r in b_rows)   # first labelled row beside b's values
+    b_head = {r for r in bi["nonempty"] if r < b_first}
+    l_head = {r for r in li["nonempty"] if r < l_first}
+    if b_head and max(b_head) >= l_first:
+        return False                                  # b's text sits beside the labelled rows: a side note
+    if b_head and l_head:
+        ok = bool(b_head & l_head)                    # both header bands present: they must overlap
+    elif b_head:
+        ok = True                                     # headerless label column: b's band sits above its rows
+    else:
+        ok = not l_head                               # neither block has a header band
+    if not ok:
+        return False
+    # Joining must not change how the labelled block reads: its header-band rows stay header-band rows and
+    # its data rows stay data rows (a label-only column's rows may become data rows); b's data rows stay data.
+    band = ("header", "caption", "codes")
+    km = _resolve_kinds([row[left[0]:b[1]] for row in grid])
+    for r, k in enumerate(_resolve_kinds([row[left[0]:left[1]] for row in grid])):
+        if (k in band and km[r] not in band) or (k == "data" and km[r] != "data"):
+            return False
+    return all(km[r] == "data" for r, k in enumerate(_resolve_kinds([row[b[0]:b[1]] for row in grid]))
+               if k == "data")
 
 
 def _column_blocks(grid) -> list[tuple[int, int]]:
@@ -373,6 +457,9 @@ def _column_blocks(grid) -> list[tuple[int, int]]:
             aligned = sum(1 for row in grid if not _empty(row[a0].v) and any(not _empty(x.v) for x in row[b[0]:b[1]]))
             texts = sum(1 for row in grid if not _empty(row[a0].v))
             if label_only and b[0] - a1 == 1 and texts and aligned >= 0.6 * texts:
+                merged[-1] = (a0, b[1])
+                continue
+            if _reattach(grid, merged[-1], b):
                 merged[-1] = (a0, b[1])
                 continue
         merged.append(b)
@@ -478,11 +565,16 @@ def _resolve_kinds(grid) -> list[str]:
     return kinds
 
 
-def _repeat_heads(grid, kinds, k: int = 3) -> set[int]:
+def _repeat_heads(grid, kinds, k: int = 3, cols: tuple | None = None) -> set[int]:
     """Rows that open a block whose child labels repeat an earlier block (e.g. Total / Men / Women each followed
     by the same age breakdown). Such rows are sibling group headers even without blank lines or indentation.
-    Signatures are computed only inside runs of consecutive data rows (never across sections/blank rows)."""
+    Signatures are computed only inside runs of consecutive data rows (never across sections/blank rows).
+    cols: the table's label columns; the signature then uses the innermost non-empty label cell of each row
+    (else the first text cell of the row, which is often an outer merged/filled class: false parents)."""
     def lab(r):
+        if cols is not None:
+            return next((clean_text(grid[r][c].v).lower() for c in reversed(cols)
+                         if isinstance(grid[r][c].v, str) and grid[r][c].v.strip()), "")
         return clean_text(next((c.v for c in grid[r] if isinstance(c.v, str) and c.v.strip()), "")).lower()
     runs, cur = [], []
     for r in range(len(grid)):
@@ -509,7 +601,14 @@ def _repeat_heads(grid, kinds, k: int = 3) -> set[int]:
 
 def _parse_block(sheet: str, grid: list[list[Cell]], c0: int) -> list[Table]:
     kinds = _resolve_kinds(grid)
-    heads = _repeat_heads(grid, kinds)
+    heads_by_col: dict = {}
+
+    def heads_for(cols):
+        if cols not in heads_by_col:
+            heads_by_col[cols] = _repeat_heads(grid, kinds, cols=cols)
+        return heads_by_col[cols]
+    heads = heads_for(None)
+    ffill: dict[int, str] = {}               # sparse outer label columns, filled down within a run of data rows
     tables: list[Table] = []
     captions: list[str] = []
     pending: list[int] = []
@@ -525,6 +624,8 @@ def _parse_block(sheet: str, grid: list[list[Cell]], c0: int) -> list[Table]:
     last_period = ""
     for r, (row, kind) in enumerate(zip(grid, kinds)):
         vals = [c.v for c in row]
+        if kind != "data":
+            ffill = {}
         if kind == "kv":
             idx = [i for i, v in enumerate(vals) if not _empty(v)]
             if kv_table is None or prev != "kv":
@@ -574,7 +675,9 @@ def _parse_block(sheet: str, grid: list[list[Cell]], c0: int) -> list[Table]:
             if cur is None or pending:
                 cur = _new_table(sheet, grid, pending, r, captions, c0)
                 tables.append(cur)
-                pending, captions, ancestors = [], [], {}
+                pending, captions, ancestors, ffill = [], [], {}, {}
+                # signatures from the innermost label column: the first text cell may be an outer (merged) class
+                heads = heads_for(tuple(cur._lab) if len(cur._lab) >= 2 else None)
                 if cur._indented:
                     stack = [(sec_ind.get(s, 0.0) - 0.5 - 0.01 * (len(sections) - 1 - i), s)
                              for i, s in enumerate(sections)]
@@ -585,9 +688,25 @@ def _parse_block(sheet: str, grid: list[list[Cell]], c0: int) -> list[Table]:
                     last_period = m.group(1)
                 elif last_period and re.fullmatch(r"(Q[1-4]|H[12]|[A-Z][a-z]{2,8}\.?)", labels[-1]):
                     labels[-1] = f"{last_period} {labels[-1]}"
+            multi = len(cur._lab) >= 2       # outer label column(s) + item column
+            if multi and (not labels[-1] or GRAND_RE.match(labels[-1])):
+                ffill = {}                   # a summary row without item label / a grand total closes every run
+            elif multi:
+                for i in range(len(labels) - 1):
+                    if labels[i]:
+                        for j in [j for j in ffill if j >= i]:
+                            del ffill[j]     # a new outer value closes its own and the inner columns' runs
+                        # a merged range already spans exactly its rows; a lowercase start is wrapped text
+                        if not row[cur._lab[i]].merged and not re.match(r"^[a-z]", labels[i]):
+                            ffill[i] = labels[i]
+                    elif i in ffill:
+                        labels[i] = ffill[i]  # sparse outer label: parent context of the rows below it
+            # The row states its parent in an outer label column: the hierarchy is explicit, so neither the
+            # "first row after a blank row" rule nor repeated-heads nesting may invent another parent.
+            explicit = multi and any(x and x != labels[-1] for x in labels[:-1])
             values = {c + c0: (clean_text(vals[c]) if isinstance(vals[c], str) else vals[c]) for c in cur._vals}
             main = labels[-1] if labels else ""
-            is_group = r in heads or (bool(GROUP_RE.match(strip_footnote(main))) and prev != "data")
+            is_group = (r in heads and not explicit) or (bool(GROUP_RE.match(strip_footnote(main))) and prev != "data")
             level = row[cur._lab[-1]].indent if cur._lab else 0.0
             if cur._indent_col is not None and is_num(vals[cur._indent_col]):
                 lvl = int(vals[cur._indent_col])
@@ -603,7 +722,8 @@ def _parse_block(sheet: str, grid: list[list[Cell]], c0: int) -> list[Table]:
                 context = " > ".join(sections + ([group] if group and not is_group else []))
             cur.rows.append({"r": r + 1, "context": context, "labels": labels, "values": values,
                              "level": level, "total": bool(TOTAL_RE.search(main))})
-            if not cur._indented and not PERIOD_RE.match(main) and (is_group or (prev == "blank" and len(cur.rows) > 1)):
+            if not cur._indented and not PERIOD_RE.match(main) and (
+                    is_group or (prev == "blank" and len(cur.rows) > 1 and not explicit)):
                 group = main
         prev = kind
         if kind != "blank":
