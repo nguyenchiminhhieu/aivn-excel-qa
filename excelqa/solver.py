@@ -437,7 +437,8 @@ CONVENTIONS = """ANSWER-KEY CONVENTIONS. The question's explicit words override 
 6. "From A to B" is B - A; "percent change" is (B - A) / A x 100; "percentage points" is a difference of two
    percentages; "ratio of A to B" is A / B.
 7. Rates, shares, averages and indices are never added up into a total unless the question asks for that sum.
-8. Values stay in the table's unit ("in thousands": 1,234 is 1234) unless the question asks for another unit.
+8. Numbers are already in the table's unit: answer with the number as the table shows it and never multiply or
+   divide by the unit ("in thousands" means 1,234 is answered as 1234), unless the question asks for another unit.
 9. Names are the table's label; when the question lists the options to choose from, use the question's wording."""
 
 _PROGRAM_HEAD = """You answer questions about spreadsheet tables by writing a short pandas program.
