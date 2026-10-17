@@ -85,7 +85,7 @@ python scripts/evaluate.py submission.csv "<input>/sample_submission.csv"   # ho
 
 ![Kiến trúc](docs/architecture.png)
 
-File gốc để chỉnh sửa: `docs/architecture.drawio` (mở bằng app.diagrams.net hoặc extension Draw.io Integration của VS Code; trang 2 là tech stack). Ghi chú nghiên cứu: `docs/RESEARCH.md`.
+File gốc để chỉnh sửa: `docs/architecture.drawio` (mở bằng app.diagrams.net hoặc extension Draw.io Integration của VS Code; trang 2 là tech stack).
 
 **Phần A – mỗi workbook, chạy một lần, không gọi LLM** (`excelqa/excel_parser.py`, `excelqa/ir.py`)
 - Đọc ô bằng openpyxl: lấy giá trị cache của công thức (kể cả array formula), tự tính khi không có cache (biểu thức được kiểm tra AST theo danh sách trắng); xử lý ô gộp, số/ngày dạng text, dấu thập phân kiểu phẩy, ký hiệu thiếu dữ liệu, ma trận ký hiệu `+/−`.
@@ -134,7 +134,7 @@ excelqa/
   solver.py              DataFrame + bản đồ, các ứng viên, tiến trình con thực thi, bỏ phiếu, trọng tài
   formatting.py          định dạng đáp án
 scripts/evaluate.py      chấm Exact Match
-docs/                    sơ đồ kiến trúc (draw.io + PNG), ghi chú nghiên cứu
+docs/                    sơ đồ kiến trúc (draw.io + PNG)
 ```
 
 ## 8. Giới hạn đã biết
