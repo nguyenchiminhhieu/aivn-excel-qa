@@ -1,0 +1,2794 @@
+[
+ {
+  "id": "ts:T03",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "How many people have a score of at least 90? Answer with only the integer, without commas or units.",
+  "reading": "count, filter (cells G3:G22)",
+  "answer": "6",
+  "pattern": "ts:count+filter",
+  "skeleton": [
+   "people",
+   "least"
+  ]
+ },
+ {
+  "id": "ts:T04",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "What is the average score of all people? Answer with only the number rounded to two decimal places.",
+  "reading": "aggregate (cells G3:G22)",
+  "answer": "80.30",
+  "pattern": "ts:aggregate",
+  "skeleton": [
+   "average",
+   "people"
+  ]
+ },
+ {
+  "id": "ts:T05",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "Who has the lowest score? Answer with the full name in the order first, middle, last name, separated by single spaces.",
+  "reading": "argmin, multi-column-answer (cells G3:G22)",
+  "answer": "Nam Thanh Nguyen",
+  "pattern": "ts:argmin+multi-column-answer",
+  "skeleton": [
+   "lowest"
+  ]
+ },
+ {
+  "id": "ts:T06",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "How many people were admitted in the year 2025? Answer with only the integer, without commas or units.",
+  "reading": "date, filter, count (cells F3:F22)",
+  "answer": "7",
+  "pattern": "ts:date+filter+count",
+  "skeleton": [
+   "people",
+   "admitted",
+   "year"
+  ]
+ },
+ {
+  "id": "ts:T07",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "Among people whose last name is Pham, what is the difference between the highest and the lowest score? Answer with only the integer, without commas or units.",
+  "reading": "filter, aggregate (cells D,G)",
+  "answer": "23",
+  "pattern": "ts:filter+aggregate",
+  "skeleton": [
+   "among",
+   "people",
+   "whose",
+   "difference",
+   "between",
+   "highest",
+   "lowest"
+  ]
+ },
+ {
+  "id": "ts:T08",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "How many people were younger than 20 full years of age on their admission date? Answer with only the integer, without commas or units.",
+  "reading": "date-arith, count (cells E,F)",
+  "answer": "3",
+  "pattern": "ts:date-arith+count",
+  "skeleton": [
+   "people",
+   "younger",
+   "than",
+   "full",
+   "years",
+   "age"
+  ]
+ },
+ {
+  "id": "ts:T14",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "Which category had the largest unadjusted percent change from October 2023 to October 2024? Answer with only the category name.",
+  "reading": "argmax (cells G4:G42)",
+  "answer": "Motor vehicle insurance",
+  "pattern": "ts:argmax",
+  "skeleton": [
+   "category",
+   "largest",
+   "october",
+   "october"
+  ]
+ },
+ {
+  "id": "ts:T15",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "Among the categories directly under 'Food at home', which had the lowest unadjusted index in October 2024? Answer with only the category name.",
+  "reading": "hierarchy, argmin (cells F7:F12)",
+  "answer": "Nonalcoholic beverages and beverage materials",
+  "pattern": "ts:hierarchy+argmin",
+  "skeleton": [
+   "among",
+   "categories",
+   "directly",
+   "under",
+   "lowest",
+   "index",
+   "october"
+  ]
+ },
+ {
+  "id": "ts:T16",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "How many categories at indent level 3 had a negative unadjusted percent change from September 2024 to October 2024? Answer with only the integer, without commas or units.",
+  "reading": "hierarchy, count (cells A,H)",
+  "answer": "6",
+  "pattern": "ts:hierarchy+count",
+  "skeleton": [
+   "categories",
+   "negative",
+   "september",
+   "october"
+  ]
+ },
+ {
+  "id": "ts:T17",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "Is a seasonally adjusted percent change from July 2024 to August 2024 reported for Hospital services? Answer with only Yes or No.",
+  "reading": "missing-value, yes-no (cells I38 empty)",
+  "answer": "No",
+  "pattern": "ts:missing-value+yes-no",
+  "skeleton": [
+   "july",
+   "august",
+   "reported"
+  ]
+ },
+ {
+  "id": "ts:T18",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "Using the unadjusted index values, compute the percent change of Fuel oil from October 2023 to October 2024. Answer with only the number rounded to one decimal place.",
+  "reading": "derived-ratio (cells D17,F17)",
+  "answer": "-20.8",
+  "pattern": "ts:derived-ratio",
+  "skeleton": [
+   "using",
+   "index",
+   "values",
+   "compute",
+   "october",
+   "october"
+  ]
+ },
+ {
+  "id": "ts:T33",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "Considering all workers, which had more employed persons: Durable goods or Nondurable goods manufacturing? Answer with only 'Durable goods' or 'Nondurable goods'.",
+  "reading": "compare, sub-row (cells B13 vs B14)",
+  "answer": "Durable goods",
+  "pattern": "ts:compare+sub-row",
+  "skeleton": [
+   "considering",
+   "workers",
+   "more",
+   "persons"
+  ]
+ },
+ {
+  "id": "ts:T34",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "Among Black or African American workers in Construction, which occupation group had more workers: 'Construction and extraction occupations' or 'Transportation and material moving occupations'? Answer with only the occupation group name.",
+  "reading": "section, compare, header-answer (cells J95 vs M95)",
+  "answer": "Construction and extraction occupations",
+  "pattern": "ts:section+compare+header-answer",
+  "skeleton": [
+   "among",
+   "workers",
+   "occupation",
+   "group",
+   "more",
+   "workers"
+  ]
+ },
+ {
+  "id": "ts:T35",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "Considering all workers, how many people in Retail trade worked in Sales and related occupations? Answer with only the integer, without commas or units.",
+  "reading": "lookup, sub-row (cells G17)",
+  "answer": "7705",
+  "pattern": "ts:lookup+sub-row",
+  "skeleton": [
+   "considering",
+   "workers",
+   "people",
+   "worked"
+  ]
+ },
+ {
+  "id": "ts:T36",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "What percentage of men employed in Manufacturing worked in Production occupations? Answer with only the number rounded to one decimal place.",
+  "reading": "derived-ratio, section (cells L33/B33)",
+  "answer": "36.8",
+  "pattern": "ts:derived-ratio+section",
+  "skeleton": [
+   "percentage",
+   "worked"
+  ]
+ },
+ {
+  "id": "ts:T38",
+  "files": [
+   "p4_t08.xlsx"
+  ],
+  "question": "How many persons at work in agriculture and related industries worked 1 to 34 hours? Answer with only the integer, without commas or units.",
+  "reading": "lookup, aggregate-row (cells C6)",
+  "answer": "587",
+  "pattern": "ts:lookup+aggregate-row",
+  "skeleton": [
+   "worked"
+  ]
+ },
+ {
+  "id": "ts:T39",
+  "files": [
+   "p4_t08.xlsx"
+  ],
+  "question": "Among the detailed hour ranges within '1 to 34 hours' (1 to 4, 5 to 14, 15 to 29 and 30 to 34 hours), which had the most persons at work in agriculture and related industries? Answer with only the hour range as written in the table.",
+  "reading": "hierarchy, argmax (cells C7:C10)",
+  "answer": "15 to 29 hours",
+  "pattern": "ts:hierarchy+argmax",
+  "skeleton": [
+   "among",
+   "detailed",
+   "hour",
+   "ranges",
+   "within",
+   "most"
+  ]
+ },
+ {
+  "id": "ts:T40",
+  "files": [
+   "p4_t08.xlsx"
+  ],
+  "question": "What were the average hours of persons who usually work full time in agriculture and related industries? Answer with only the number as shown in the table.",
+  "reading": "lookup (cells C20)",
+  "answer": "46.7",
+  "pattern": "ts:lookup",
+  "skeleton": []
+ },
+ {
+  "id": "ts:T42",
+  "files": [
+   "p4_t09.xlsx"
+  ],
+  "question": "Among the industries listed for wage and salary workers, which had the highest average hours for total at work? Answer with only the industry name.",
+  "reading": "argmax (cells H9:H24)",
+  "answer": "Mining, quarrying, and oil and gas extraction",
+  "pattern": "ts:argmax",
+  "skeleton": [
+   "among",
+   "listed",
+   "highest"
+  ]
+ },
+ {
+  "id": "ts:T43",
+  "files": [
+   "p4_t09.xlsx"
+  ],
+  "question": "How many self-employed workers (unincorporated) worked 1 to 34 hours for economic reasons? Answer with only the integer, without commas or units.",
+  "reading": "multi-level-header, lookup (cells D26)",
+  "answer": "498",
+  "pattern": "ts:multi-level-header+lookup",
+  "skeleton": []
+ },
+ {
+  "id": "ts:T44",
+  "files": [
+   "p4_t09.xlsx"
+  ],
+  "question": "For wage and salary workers in Leisure and hospitality, what percentage of those at work worked 1 to 34 hours? Answer with only the number rounded to one decimal place.",
+  "reading": "derived-ratio (cells C20/B20)",
+  "answer": "41.7",
+  "pattern": "ts:derived-ratio",
+  "skeleton": [
+   "percentage"
+  ]
+ },
+ {
+  "id": "ts:H02",
+  "files": [
+   "hr_company.xlsx"
+  ],
+  "question": "What is the highest monthly salary in the employee roster? Answer with only the integer, without commas or units.",
+  "reading": "Salaries >= 3000 are stored as text with thousands separators. argmax, text-number (cells Employees!H)",
+  "answer": "4700",
+  "pattern": "ts:argmax+text-number",
+  "skeleton": [
+   "highest",
+   "employee",
+   "roster"
+  ]
+ },
+ {
+  "id": "ts:H03",
+  "files": [
+   "hr_company.xlsx"
+  ],
+  "question": "How many female employees are in the IT department (code IT)? Answer with only the integer, without commas or units.",
+  "reading": "count, filter",
+  "answer": "2",
+  "pattern": "ts:count+filter",
+  "skeleton": [
+   "female",
+   "employees",
+   "department",
+   "code"
+  ]
+ },
+ {
+  "id": "ts:H04",
+  "files": [
+   "hr_company.xlsx"
+  ],
+  "question": "Which department has the most employees? Answer with only the full department name as written in the Departments sheet.",
+  "reading": "cross-sheet, argmax (cells Employees!C + Departments!B)",
+  "answer": "Information Technology",
+  "pattern": "ts:cross-sheet+argmax",
+  "skeleton": [
+   "department",
+   "most",
+   "employees"
+  ]
+ },
+ {
+  "id": "ts:H05",
+  "files": [
+   "hr_company.xlsx"
+  ],
+  "question": "What is the total annual budget, in USD, of all departments located in Hanoi? Answer with only the integer, without commas or units.",
+  "reading": "cross-sheet, filter, aggregate (cells Departments!E)",
+  "answer": "3700000",
+  "pattern": "ts:cross-sheet+filter+aggregate",
+  "skeleton": [
+   "total",
+   "departments",
+   "located"
+  ]
+ },
+ {
+  "id": "ts:H06",
+  "files": [
+   "hr_company.xlsx"
+  ],
+  "question": "Who is the head of the Marketing department? Answer with only the employee's full name.",
+  "reading": "cross-sheet, join (cells Departments!D4 -> Employees)",
+  "answer": "Pham Thu Dung",
+  "pattern": "ts:cross-sheet+join",
+  "skeleton": [
+   "head",
+   "department"
+  ]
+ },
+ {
+  "id": "ts:H07",
+  "files": [
+   "hr_company.xlsx"
+  ],
+  "question": "What is the average monthly salary of female employees in the IT department? Answer with only the number rounded to two decimal places.",
+  "reading": "filter, aggregate",
+  "answer": "2250.00",
+  "pattern": "ts:filter+aggregate",
+  "skeleton": [
+   "average",
+   "female",
+   "employees",
+   "department"
+  ]
+ },
+ {
+  "id": "ts:H08",
+  "files": [
+   "hr_company.xlsx"
+  ],
+  "question": "As of 30 June 2025, how many employees had completed at least 10 full years of service since their hire date? Answer with only the integer, without commas or units.",
+  "reading": "date-arith, count (cells Employees!G)",
+  "answer": "6",
+  "pattern": "ts:date-arith+count",
+  "skeleton": [
+   "june",
+   "employees",
+   "completed",
+   "least",
+   "full",
+   "years",
+   "service",
+   "since"
+  ]
+ },
+ {
+  "id": "ts:H09",
+  "files": [
+   "hr_company.xlsx"
+  ],
+  "question": "Applying only the salary changes that took effect on or before 30 June 2025, what is the total monthly salary of all employees in the Sales department (code SAL)? Answer with only the integer, without commas or units.",
+  "reading": "The 2025-07-01 change must be ignored. cross-sheet, date-filter, multi-hop (cells Employees + Salary changes 2025)",
+  "answer": "12450",
+  "pattern": "ts:cross-sheet+date-filter+multi-hop",
+  "skeleton": [
+   "applying",
+   "changes",
+   "took",
+   "effect",
+   "before",
+   "june",
+   "total",
+   "employees",
+   "department",
+   "code"
+  ]
+ },
+ {
+  "id": "ts:H10",
+  "files": [
+   "hr_company.xlsx"
+  ],
+  "question": "Who is the oldest employee? Answer with only the full name.",
+  "reading": "argmin, date (cells Employees!F)",
+  "answer": "Dang Van Long",
+  "pattern": "ts:argmin+date",
+  "skeleton": [
+   "oldest",
+   "employee"
+  ]
+ },
+ {
+  "id": "ts:H11",
+  "files": [
+   "hr_company.xlsx"
+  ],
+  "question": "How many employees work in departments located in Ho Chi Minh City? Answer with only the integer, without commas or units.",
+  "reading": "cross-sheet, filter, count",
+  "answer": "8",
+  "pattern": "ts:cross-sheet+filter+count",
+  "skeleton": [
+   "employees",
+   "work",
+   "departments",
+   "located"
+  ]
+ },
+ {
+  "id": "ts:H12",
+  "files": [
+   "hr_company.xlsx"
+  ],
+  "question": "List the Emp IDs of all employees with a rating of 5, in ascending order, separated by a comma and one space.",
+  "reading": "filter, list-answer",
+  "answer": "E-1003, E-1007, E-1012",
+  "pattern": "ts:filter+list-answer",
+  "skeleton": [
+   "list",
+   "emp",
+   "ids",
+   "employees",
+   "ascending",
+   "order"
+  ]
+ },
+ {
+  "id": "ts:C03",
+  "files": [
+   "cpi_indented.xlsx"
+  ],
+  "question": "Among the categories directly under Energy, which had the larger unadjusted percent change from November 2024 to December 2024? Answer with only the category name.",
+  "reading": "indent-hierarchy, argmax",
+  "answer": "Electricity",
+  "pattern": "ts:indent-hierarchy+argmax",
+  "skeleton": [
+   "among",
+   "categories",
+   "directly",
+   "under",
+   "larger",
+   "november",
+   "december"
+  ]
+ },
+ {
+  "id": "ts:C04",
+  "files": [
+   "cpi_indented.xlsx"
+  ],
+  "question": "What is the sum of the relative importances of the categories directly under Shelter, as a percentage? Answer with only the number with three decimal places, without the % sign.",
+  "reading": "indent-hierarchy, percent-format, aggregate",
+  "answer": "34.566",
+  "pattern": "ts:indent-hierarchy+percent-format+aggregate",
+  "skeleton": [
+   "sum",
+   "importances",
+   "categories",
+   "directly",
+   "under",
+   "percentage"
+  ]
+ },
+ {
+  "id": "ts:C05",
+  "files": [
+   "cpi_indented.xlsx"
+  ],
+  "question": "Among the categories directly under 'All items less food and energy', which had the smallest unadjusted percent change from November 2024 to December 2024? Answer with only the category name.",
+  "reading": "indent-hierarchy, argmin",
+  "answer": "Apparel",
+  "pattern": "ts:indent-hierarchy+argmin",
+  "skeleton": [
+   "among",
+   "categories",
+   "directly",
+   "under",
+   "smallest",
+   "november",
+   "december"
+  ]
+ },
+ {
+  "id": "ts:C06",
+  "files": [
+   "cpi_indented.xlsx"
+  ],
+  "question": "Among the most detailed categories (those without any subcategory), which had the second-highest seasonally adjusted percent change from November 2024 to December 2024? Answer with only the category name.",
+  "reading": "Leaves only; Energy (2.6) is an aggregate and must be skipped. indent-hierarchy, leaf-only, argmax",
+  "answer": "Meats, poultry, fish, and eggs",
+  "pattern": "ts:indent-hierarchy+leaf-only+argmax",
+  "skeleton": [
+   "among",
+   "most",
+   "detailed",
+   "categories",
+   "subcategory",
+   "second",
+   "highest",
+   "november",
+   "december"
+  ]
+ },
+ {
+  "id": "ts:C07",
+  "files": [
+   "cpi_indented.xlsx"
+  ],
+  "question": "How many categories in the table (including aggregates) had a negative unadjusted percent change from November 2024 to December 2024? Answer with only the integer, without commas or units.",
+  "reading": "count, filter",
+  "answer": "4",
+  "pattern": "ts:count+filter",
+  "skeleton": [
+   "categories",
+   "table",
+   "including",
+   "aggregates",
+   "negative",
+   "november",
+   "december"
+  ]
+ },
+ {
+  "id": "man:M001",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "Who was the oldest person on their admission date? Answer with the full name in the order first, middle, last name, separated by single spaces.",
+  "reading": "No.2 and No.8 are both 28 in whole years; must compare exact ages in days.",
+  "answer": "An Gia Pham",
+  "pattern": "man:date-arith+argmax+tie-break",
+  "skeleton": [
+   "oldest",
+   "person"
+  ]
+ },
+ {
+  "id": "man:M002",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "Who was the third-youngest person on their admission date? Answer with only the last name.",
+  "reading": "Age at admission, not current age or birth date order.",
+  "answer": "Tran",
+  "pattern": "man:date-arith+rank",
+  "skeleton": [
+   "third",
+   "youngest",
+   "person"
+  ]
+ },
+ {
+  "id": "man:M003",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "How many people were younger than 22 years old on their admission date? Answer with only the integer.",
+  "reading": "Two people are exactly 22 (whole years) and must be excluded.",
+  "answer": "5",
+  "pattern": "man:date-arith+count",
+  "skeleton": [
+   "people",
+   "younger",
+   "than",
+   "years",
+   "old"
+  ]
+ },
+ {
+  "id": "man:M004",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "How many people scored higher than the average score of all people? Answer with only the integer.",
+  "reading": "Straightforward: aggregate, count.",
+  "answer": "11",
+  "pattern": "man:aggregate+count",
+  "skeleton": [
+   "people",
+   "scored",
+   "higher",
+   "than",
+   "average",
+   "people"
+  ]
+ },
+ {
+  "id": "man:M005",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "What was the average score of the people admitted in 2025? Answer with only the number rounded to two decimal places.",
+  "reading": "Straightforward: date-filter, aggregate, rounding.",
+  "answer": "82.57",
+  "pattern": "man:date-filter+aggregate+rounding",
+  "skeleton": [
+   "average",
+   "people",
+   "admitted"
+  ]
+ },
+ {
+  "id": "man:M006",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "Considering only last names shared by at least two people, which last name has the highest average score? Answer with only the last name.",
+  "reading": "Group by the 'Last' sub-column of the merged 'Name' header; singletons Vu/Dang must be excluded.",
+  "answer": "Ngo",
+  "pattern": "man:groupby+argmax+filter",
+  "skeleton": [
+   "considering",
+   "names",
+   "shared",
+   "least",
+   "two",
+   "people",
+   "highest",
+   "average"
+  ]
+ },
+ {
+  "id": "man:M007",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "What is the absolute difference between the score of the person admitted earliest and the score of the person admitted most recently? Answer with only the integer.",
+  "reading": "Admission column, not birth column (both under merged 'Date of').",
+  "answer": "9",
+  "pattern": "man:date+argmin+argmax+arith",
+  "skeleton": [
+   "absolute",
+   "difference",
+   "between",
+   "person",
+   "admitted",
+   "earliest",
+   "person",
+   "admitted",
+   "most",
+   "recently"
+  ]
+ },
+ {
+  "id": "man:M008",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "What is the median score of all people? Answer with only the number.",
+  "reading": "Even count: median is the mean of the 10th and 11th values.",
+  "answer": "82",
+  "pattern": "man:median",
+  "skeleton": [
+   "median",
+   "people"
+  ]
+ },
+ {
+  "id": "man:M009",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "What is the 'No' of the only person whose birth month is the same as their admission month? Answer with only the integer.",
+  "reading": "Straightforward: date, filter.",
+  "answer": "2",
+  "pattern": "man:date+filter",
+  "skeleton": [
+   "person",
+   "whose",
+   "month",
+   "same",
+   "month"
+  ]
+ },
+ {
+  "id": "man:M010",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "Among people born before the year 2000, who had the lowest score? Answer with only the first name.",
+  "reading": "Answer is the 'First' sub-column, not 'Last'.",
+  "answer": "An",
+  "pattern": "man:date-filter+argmin",
+  "skeleton": [
+   "among",
+   "people",
+   "born",
+   "before",
+   "year",
+   "lowest"
+  ]
+ },
+ {
+  "id": "man:M019",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "Which expenditure category had the highest unadjusted index in October 2024? Answer with only the category name, without footnote markers.",
+  "reading": "Two 'Oct. 2024' columns exist (index F, and percent-change headers mentioning Oct. 2024).",
+  "answer": "Tobacco and smoking products",
+  "pattern": "man:argmax+footnote-strip",
+  "skeleton": [
+   "expenditure",
+   "category",
+   "highest",
+   "index",
+   "october"
+  ]
+ },
+ {
+  "id": "man:M020",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "How many expenditure categories had a negative unadjusted percent change from October 2023 to October 2024? Answer with only the integer.",
+  "reading": "Straightforward: count, filter, negative.",
+  "answer": "8",
+  "pattern": "man:count+filter+negative",
+  "skeleton": [
+   "expenditure",
+   "categories",
+   "negative",
+   "october",
+   "october"
+  ]
+ },
+ {
+  "id": "man:M021",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "What was the seasonally adjusted percent change for Hospital services from September 2024 to October 2024? Answer with only the number.",
+  "reading": "I38 and J38 are empty; a parser that drops blanks shifts K38 left. Also must not take the unadjusted Sep-Oct column H.",
+  "answer": "0.5",
+  "pattern": "man:missing-value+multi-level-header+lookup",
+  "skeleton": [
+   "september",
+   "october"
+  ]
+ },
+ {
+  "id": "man:M022",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "How many of the seasonally adjusted percent change values are missing for Hospital services? Answer with only the integer.",
+  "reading": "Straightforward: missing-value, count.",
+  "answer": "2",
+  "pattern": "man:missing-value+count",
+  "skeleton": [
+   "values",
+   "missing"
+  ]
+ },
+ {
+  "id": "man:M023",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "In the category hierarchy, what is the immediate parent category of Electricity? Answer with only the category name.",
+  "reading": "Parent is the nearest row above with indent level one less (level 2), not 'Energy'.",
+  "answer": "Energy services",
+  "pattern": "man:hierarchy+parent",
+  "skeleton": [
+   "category",
+   "hierarchy",
+   "immediate",
+   "parent",
+   "category"
+  ]
+ },
+ {
+  "id": "man:M024",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "Among the most detailed (lowest-level) categories under Energy, which had the largest decline in unadjusted percent change from October 2023 to October 2024? Answer with only the category name.",
+  "reading": "Leaves are Fuel oil, Gasoline, Electricity, Utility gas; Motor fuel and Energy commodities are not leaves.",
+  "answer": "Fuel oil",
+  "pattern": "man:hierarchy+leaf-only+argmin",
+  "skeleton": [
+   "among",
+   "most",
+   "detailed",
+   "lowest",
+   "categories",
+   "under",
+   "largest",
+   "decline",
+   "october",
+   "october"
+  ]
+ },
+ {
+  "id": "man:M025",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "Using the unadjusted index values, calculate the percent change for Motor vehicle insurance from October 2023 to October 2024. Answer with only the number rounded to two decimal places.",
+  "reading": "Table shows the rounded 14.0; question requires recomputation from indexes.",
+  "answer": "13.99",
+  "pattern": "man:derived-ratio+rounding",
+  "skeleton": [
+   "using",
+   "index",
+   "values",
+   "calculate",
+   "october",
+   "october"
+  ]
+ },
+ {
+  "id": "man:M026",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "What is the combined relative importance (September 2024) of all categories directly under Transportation services? Answer with only the number rounded to three decimal places.",
+  "reading": "Children only (level 4 rows 40-42), not the parent's own 6.521.",
+  "answer": "5.014",
+  "pattern": "man:hierarchy+children+aggregate",
+  "skeleton": [
+   "combined",
+   "september",
+   "categories",
+   "directly",
+   "under"
+  ]
+ },
+ {
+  "id": "man:M027",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "Among the categories directly under 'Food at home', which one had a lower unadjusted index in October 2024 than in September 2024? Answer with only the category name.",
+  "reading": "Answer contains commas; must be returned verbatim.",
+  "answer": "Meats, poultry, fish, and eggs",
+  "pattern": "man:hierarchy+children+filter",
+  "skeleton": [
+   "among",
+   "categories",
+   "directly",
+   "under",
+   "lower",
+   "index",
+   "october",
+   "than",
+   "september"
+  ]
+ },
+ {
+  "id": "man:M028",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "Among the categories directly under 'Services less energy services', which had the largest unadjusted percent change from September 2024 to October 2024? Answer with only the category name.",
+  "reading": "Level-4 grandchildren (e.g. Motor vehicle maintenance 1.1) must be excluded.",
+  "answer": "Transportation services",
+  "pattern": "man:hierarchy+children+argmax",
+  "skeleton": [
+   "among",
+   "categories",
+   "directly",
+   "under",
+   "largest",
+   "september",
+   "october"
+  ]
+ },
+ {
+  "id": "man:M029",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "For how many expenditure categories was the seasonally adjusted percent change from August 2024 to September 2024 strictly greater than the one from September 2024 to October 2024? Exclude categories with a missing value. Answer with only the integer.",
+  "reading": "Straightforward: count, compare-columns, missing-value.",
+  "answer": "15",
+  "pattern": "man:count+compare-columns+missing-value",
+  "skeleton": [
+   "expenditure",
+   "categories",
+   "august",
+   "september",
+   "strictly",
+   "greater",
+   "than",
+   "september",
+   "october",
+   "exclude",
+   "categories",
+   "missing"
+  ]
+ },
+ {
+  "id": "man:M030",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "By how many index points did the unadjusted index for All items less food and energy rise from October 2023 to October 2024? Answer with only the number rounded to three decimal places.",
+  "reading": "Straightforward: arith, rounding.",
+  "answer": "10.378",
+  "pattern": "man:arith+rounding",
+  "skeleton": [
+   "index",
+   "points",
+   "index",
+   "rise",
+   "october",
+   "october"
+  ]
+ },
+ {
+  "id": "man:M054",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "What is the total number of employed persons in Farming, fishing, and forestry occupations, summed over the major industry groups (all workers, both sexes)? Answer with only the integer, without commas or units.",
+  "reading": "Summing every row in TOTAL double-counts sub-industries (gives 1070).",
+  "answer": "988",
+  "pattern": "man:hierarchy+no-double-count+column-sum",
+  "skeleton": [
+   "persons",
+   "summed",
+   "over",
+   "major",
+   "industry",
+   "groups",
+   "workers",
+   "both",
+   "sexes"
+  ]
+ },
+ {
+  "id": "man:M055",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "Within Manufacturing (all workers, both sexes), which detailed occupation group employed the most people? Answer with only the occupation group name.",
+  "reading": "Detailed (row-6) headers, not the row-5 major groups.",
+  "answer": "Production occupations",
+  "pattern": "man:argmax+multi-level-header+header-answer",
+  "skeleton": [
+   "within",
+   "workers",
+   "both",
+   "sexes",
+   "detailed",
+   "occupation",
+   "group",
+   "most",
+   "people"
+  ]
+ },
+ {
+  "id": "man:M056",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "Among Asian workers, which major industry group had the most employees in Professional and related occupations? Answer with only the industry name.",
+  "reading": "Asian block starts at row 114; header row repeated label 'Professional and related'.",
+  "answer": "Education and health services",
+  "pattern": "man:section+argmax+row-label-answer+hierarchy",
+  "skeleton": [
+   "among",
+   "workers",
+   "major",
+   "industry",
+   "group",
+   "most",
+   "employees"
+  ]
+ },
+ {
+  "id": "man:M057",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "How many Black or African American workers in Public administration were in service occupations (protective service plus service occupations except protective)? Answer with only the integer, without commas or units.",
+  "reading": "Straightforward: section, aggregate, multi-level-header.",
+  "answer": "387",
+  "pattern": "man:section+aggregate+multi-level-header",
+  "skeleton": [
+   "workers",
+   "plus"
+  ]
+ },
+ {
+  "id": "man:M058",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "For men employed in Retail trade, what percentage were in Sales and related occupations? Answer with only the number rounded to one decimal place.",
+  "reading": "Retail trade (sub-industry), not Wholesale and retail trade.",
+  "answer": "42.7",
+  "pattern": "man:section+sub-industry+derived-ratio",
+  "skeleton": [
+   "percentage"
+  ]
+ },
+ {
+  "id": "man:M059",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "Which major industry group has the highest proportion of women among its workers in Protective service occupations? Answer with only the industry name.",
+  "reading": "Highest count of women is Public administration; ratio women/total needed (Men block offset 21, Women offset 42).",
+  "answer": "Financial activities",
+  "pattern": "man:multi-section+derived-ratio+argmax",
+  "skeleton": [
+   "major",
+   "industry",
+   "group",
+   "highest",
+   "proportion",
+   "among",
+   "workers"
+  ]
+ },
+ {
+  "id": "man:M060",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "How many women employed in Construction worked in Office and administrative support occupations? Answer with only the integer, without commas or units.",
+  "reading": "Straightforward: section, lookup.",
+  "answer": "406",
+  "pattern": "man:section+lookup",
+  "skeleton": [
+   "worked"
+  ]
+ },
+ {
+  "id": "man:M061",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "Rank Wholesale trade, Retail trade, and Transportation and utilities by the number of White workers in Transportation and material moving occupations. Answer with the three names in descending order, separated by a comma and one space.",
+  "reading": "Straightforward: section, rank, multi-answer.",
+  "answer": "Transportation and utilities, Retail trade, Wholesale trade",
+  "pattern": "man:section+rank+multi-answer",
+  "skeleton": [
+   "rank",
+   "workers"
+  ]
+ },
+ {
+  "id": "man:M062",
+  "files": [
+   "p4_t08.xlsx"
+  ],
+  "question": "Considering only the most detailed hour categories, which one had the largest number of persons at work in agriculture and related industries? Answer with the hour category as written in the table.",
+  "reading": "Aggregates '41 hours and over' (758) and '35 hours and over' (1592) are larger than 40 hours (737).",
+  "answer": "40 hours",
+  "pattern": "man:hierarchy+leaf-only+argmax+row-label-answer",
+  "skeleton": [
+   "considering",
+   "most",
+   "detailed",
+   "hour",
+   "categories",
+   "largest"
+  ]
+ },
+ {
+  "id": "man:M063",
+  "files": [
+   "p4_t08.xlsx"
+  ],
+  "question": "What percentage of persons at work in agriculture and related industries worked 49 hours or more? Answer with only the number rounded to one decimal place.",
+  "reading": "Sum 49-59 and 60+; same result from counts or from percent columns.",
+  "answer": "28.3",
+  "pattern": "man:aggregate+percent-column",
+  "skeleton": [
+   "percentage",
+   "worked",
+   "more"
+  ]
+ },
+ {
+  "id": "man:M064",
+  "files": [
+   "p4_t08.xlsx"
+  ],
+  "question": "How many persons at work in nonagricultural industries worked 41 to 59 hours? Answer with only the integer, without commas or units.",
+  "reading": "Straightforward: aggregate.",
+  "answer": "25248",
+  "pattern": "man:aggregate",
+  "skeleton": [
+   "worked"
+  ]
+ },
+ {
+  "id": "man:M065",
+  "files": [
+   "p4_t08.xlsx"
+  ],
+  "question": "How many more average hours did persons who usually work full time work in agriculture and related industries than in nonagricultural industries? Answer with only the number rounded to one decimal place.",
+  "reading": "Straightforward: arith, rounding.",
+  "answer": "4.8",
+  "pattern": "man:arith+rounding",
+  "skeleton": [
+   "more",
+   "than"
+  ]
+ },
+ {
+  "id": "man:M066",
+  "files": [
+   "p4_t08.xlsx"
+  ],
+  "question": "Considering only the most detailed hour categories, for which category is the absolute difference between the agricultural and nonagricultural percent distributions the largest? Answer with the hour category as written in the table.",
+  "reading": "Percent-distribution block (E-G), not persons-at-work block (B-D).",
+  "answer": "40 hours",
+  "pattern": "man:leaf-only+percent-column+argmax",
+  "skeleton": [
+   "considering",
+   "most",
+   "detailed",
+   "hour",
+   "categories",
+   "category",
+   "absolute",
+   "difference",
+   "between",
+   "agricultural",
+   "distributions",
+   "largest"
+  ]
+ },
+ {
+  "id": "man:M067",
+  "files": [
+   "p4_t09.xlsx"
+  ],
+  "question": "Among the major industries for wage and salary workers, which had the highest share of total at work who worked 1 to 34 hours for economic reasons? Answer with only the industry name.",
+  "reading": "Straightforward: derived-ratio, argmax, hierarchy.",
+  "answer": "Leisure and hospitality",
+  "pattern": "man:derived-ratio+argmax+hierarchy",
+  "skeleton": [
+   "among",
+   "major",
+   "highest",
+   "share"
+  ]
+ },
+ {
+  "id": "man:M068",
+  "files": [
+   "p4_t09.xlsx"
+  ],
+  "question": "How many unincorporated self-employed workers worked 1 to 34 hours for noneconomic reasons? Answer with only the integer, without commas or units.",
+  "reading": "'For noneconomic reasons' spans two sub-columns (usually full time / usually part time).",
+  "answer": "2797",
+  "pattern": "man:multi-level-header+aggregate",
+  "skeleton": []
+ },
+ {
+  "id": "man:M069",
+  "files": [
+   "p4_t09.xlsx"
+  ],
+  "question": "Excluding Mining, quarrying, and oil and gas extraction, which major industry for wage and salary workers had the highest average hours for persons who usually work full time? Answer with only the industry name.",
+  "reading": "Two 'Average hours' sub-columns: Total at work (H) vs usually full time (I).",
+  "answer": "Transportation and utilities",
+  "pattern": "man:argmax+filter+hierarchy",
+  "skeleton": [
+   "excluding",
+   "major",
+   "industry",
+   "highest"
+  ]
+ },
+ {
+  "id": "man:M070",
+  "files": [
+   "p4_t09.xlsx"
+  ],
+  "question": "What percentage of wage and salary workers in Education and health services worked 35 hours or more? Answer with only the number rounded to one decimal place.",
+  "reading": "Straightforward: derived-ratio, rounding.",
+  "answer": "76.1",
+  "pattern": "man:derived-ratio+rounding",
+  "skeleton": [
+   "percentage"
+  ]
+ },
+ {
+  "id": "man:M071",
+  "files": [
+   "p4_t09.xlsx"
+  ],
+  "question": "What is the combined total at work of unincorporated self-employed workers and unpaid family workers? Answer with only the integer, without commas or units.",
+  "reading": "Straightforward: aggregate.",
+  "answer": "8497",
+  "pattern": "man:aggregate",
+  "skeleton": [
+   "combined"
+  ]
+ },
+ {
+  "id": "man:M072",
+  "files": [
+   "p4_t09.xlsx"
+  ],
+  "question": "For wage and salary workers in durable goods manufacturing, how many worked 1 to 34 hours for noneconomic reasons (usually full time and usually part time combined)? Answer with only the integer, without commas or units.",
+  "reading": "Straightforward: sub-industry, multi-level-header, aggregate.",
+  "answer": "845",
+  "pattern": "man:sub-industry+multi-level-header+aggregate",
+  "skeleton": [
+   "combined"
+  ]
+ },
+ {
+  "id": "hard:H001",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "Ordering everyone by admission date, what score did the person admitted right after the person who was youngest on their admission date receive? Answer with only the integer score.",
+  "reading": "3 steps: anchor=Quang Van Bui adm 2024-07-13 -> next Minh Hoang Nguyen adm 2025-01-19",
+  "answer": "92",
+  "pattern": "t01_next_admission_score",
+  "skeleton": [
+   "ordering",
+   "everyone",
+   "person",
+   "admitted",
+   "right",
+   "after",
+   "person",
+   "youngest",
+   "receive"
+  ]
+ },
+ {
+  "id": "hard:H002",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "Ordering everyone by admission date, what score did the person admitted right after the lowest scorer receive? Answer with only the integer score.",
+  "reading": "3 steps: anchor=Nam Thanh Nguyen adm 2025-02-16 -> next Khanh Gia Hoang adm 2025-05-23",
+  "answer": "81",
+  "pattern": "t01_next_admission_score",
+  "skeleton": [
+   "ordering",
+   "everyone",
+   "person",
+   "admitted",
+   "right",
+   "after",
+   "lowest",
+   "scorer",
+   "receive"
+  ]
+ },
+ {
+  "id": "hard:H003",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "Ordering everyone by admission date, what score did the person admitted right after the person who was oldest on their admission date receive? Answer with only the integer score.",
+  "reading": "3 steps: anchor=An Gia Pham adm 2024-02-08 -> next Lan Hoang Nguyen adm 2024-03-04",
+  "answer": "76",
+  "pattern": "t01_next_admission_score",
+  "skeleton": [
+   "ordering",
+   "everyone",
+   "person",
+   "admitted",
+   "right",
+   "after",
+   "person",
+   "oldest",
+   "receive"
+  ]
+ },
+ {
+  "id": "hard:H004",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "Ordering everyone by admission date, what score did the person admitted right after the earliest admitted person receive? Answer with only the integer score.",
+  "reading": "3 steps: anchor=An Anh Ngo adm 2021-03-14 -> next Nga Anh Ngo adm 2021-05-16",
+  "answer": "99",
+  "pattern": "t01_next_admission_score",
+  "skeleton": [
+   "ordering",
+   "everyone",
+   "person",
+   "admitted",
+   "right",
+   "after",
+   "earliest",
+   "admitted",
+   "person",
+   "receive"
+  ]
+ },
+ {
+  "id": "hard:H005",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "Excluding the person with the earliest birth date, what is the average score of the people born in the same decade as the person with the earliest birth date? Answer with only the number rounded to two decimal places.",
+  "reading": "3 steps: anchor=An Gia Pham born 1995-02-14 -> decade 1990s, n=11",
+  "answer": "81.36",
+  "pattern": "t01_same_decade_avg",
+  "skeleton": [
+   "excluding",
+   "person",
+   "earliest",
+   "average",
+   "people",
+   "born",
+   "same",
+   "decade",
+   "person",
+   "earliest"
+  ]
+ },
+ {
+  "id": "hard:H006",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "Excluding the most recently admitted person, what is the average score of the people born in the same decade as the most recently admitted person? Answer with only the number rounded to two decimal places.",
+  "reading": "3 steps: anchor=Ha Bao Ngo born 2000-03-23 -> decade 2000s, n=7",
+  "answer": "79.00",
+  "pattern": "t01_same_decade_avg",
+  "skeleton": [
+   "excluding",
+   "most",
+   "recently",
+   "admitted",
+   "person",
+   "average",
+   "people",
+   "born",
+   "same",
+   "decade",
+   "most",
+   "recently",
+   "admitted",
+   "person"
+  ]
+ },
+ {
+  "id": "hard:H007",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "Excluding the top scorer, what is the average score of the people born in the same decade as the top scorer? Answer with only the number rounded to two decimal places.",
+  "reading": "3 steps: anchor=Nga Anh Ngo born 2002-02-27 -> decade 2000s, n=7",
+  "answer": "78.86",
+  "pattern": "t01_same_decade_avg",
+  "skeleton": [
+   "excluding",
+   "top",
+   "scorer",
+   "average",
+   "people",
+   "born",
+   "same",
+   "decade",
+   "top",
+   "scorer"
+  ]
+ },
+ {
+  "id": "hard:H008",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "Excluding the lowest scorer, what is the average score of the people born in the same decade as the lowest scorer? Answer with only the number rounded to two decimal places.",
+  "reading": "3 steps: anchor=Nam Thanh Nguyen born 2002-06-06 -> decade 2000s, n=7",
+  "answer": "84.71",
+  "pattern": "t01_same_decade_avg",
+  "skeleton": [
+   "excluding",
+   "lowest",
+   "scorer",
+   "average",
+   "people",
+   "born",
+   "same",
+   "decade",
+   "lowest",
+   "scorer"
+  ]
+ },
+ {
+  "id": "hard:H009",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "Not counting the person with the latest birth date themself, how many people were admitted in the same calendar year as the person with the latest birth date? Answer with only the integer.",
+  "reading": "2 steps: anchor=Quang Van Bui admitted 2024-07-13",
+  "answer": "4",
+  "pattern": "t01_same_year_count",
+  "skeleton": [
+   "not",
+   "counting",
+   "person",
+   "latest",
+   "themself",
+   "people",
+   "admitted",
+   "same",
+   "calendar",
+   "year",
+   "person",
+   "latest"
+  ]
+ },
+ {
+  "id": "hard:H010",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "Not counting the earliest admitted person themself, how many people were admitted in the same calendar year as the earliest admitted person? Answer with only the integer.",
+  "reading": "2 steps: anchor=An Anh Ngo admitted 2021-03-14",
+  "answer": "2",
+  "pattern": "t01_same_year_count",
+  "skeleton": [
+   "not",
+   "counting",
+   "earliest",
+   "admitted",
+   "person",
+   "themself",
+   "people",
+   "admitted",
+   "same",
+   "calendar",
+   "year",
+   "earliest",
+   "admitted",
+   "person"
+  ]
+ },
+ {
+  "id": "hard:H011",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "Not counting the most recently admitted person themself, how many people were admitted in the same calendar year as the most recently admitted person? Answer with only the integer.",
+  "reading": "2 steps: anchor=Ha Bao Ngo admitted 2025-10-21",
+  "answer": "6",
+  "pattern": "t01_same_year_count",
+  "skeleton": [
+   "not",
+   "counting",
+   "most",
+   "recently",
+   "admitted",
+   "person",
+   "themself",
+   "people",
+   "admitted",
+   "same",
+   "calendar",
+   "year",
+   "most",
+   "recently",
+   "admitted",
+   "person"
+  ]
+ },
+ {
+  "id": "hard:H012",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "Among the other people who share a last name with the person who was oldest on their admission date, who was youngest on their admission date? Answer with the full name in the order first, middle, last name, separated by single spaces.",
+  "reading": "3 steps: anchor=An Gia Pham (last=Pham); group=['Khanh Van Pham', 'Duc Minh Pham', 'Ha Hoang Pham']; pick by age_days",
+  "answer": "Ha Hoang Pham",
+  "pattern": "t01_samelast_superlative",
+  "skeleton": [
+   "among",
+   "other",
+   "people",
+   "share",
+   "person",
+   "oldest",
+   "youngest"
+  ]
+ },
+ {
+  "id": "hard:H013",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "Among the other people who share a last name with the lowest scorer, who has the highest score? Answer with the full name in the order first, middle, last name, separated by single spaces.",
+  "reading": "3 steps: anchor=Nam Thanh Nguyen (last=Nguyen); group=['Minh Hoang Nguyen', 'Phuc Thi Nguyen', 'Lan Hoang Nguyen']; pick by score",
+  "answer": "Minh Hoang Nguyen",
+  "pattern": "t01_samelast_superlative",
+  "skeleton": [
+   "among",
+   "other",
+   "people",
+   "share",
+   "lowest",
+   "scorer",
+   "highest"
+  ]
+ },
+ {
+  "id": "hard:H014",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "Among the other people who share a last name with the top scorer, who has the lowest score? Answer with the full name in the order first, middle, last name, separated by single spaces.",
+  "reading": "3 steps: anchor=Nga Anh Ngo (last=Ngo); group=['Minh Thi Ngo', 'An Anh Ngo', 'Ha Bao Ngo']; pick by score",
+  "answer": "An Anh Ngo",
+  "pattern": "t01_samelast_superlative",
+  "skeleton": [
+   "among",
+   "other",
+   "people",
+   "share",
+   "top",
+   "scorer",
+   "lowest"
+  ]
+ },
+ {
+  "id": "hard:H015",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "Among the other people who share a last name with the lowest scorer, who has the lowest score? Answer with the full name in the order first, middle, last name, separated by single spaces.",
+  "reading": "3 steps: anchor=Nam Thanh Nguyen (last=Nguyen); group=['Minh Hoang Nguyen', 'Phuc Thi Nguyen', 'Lan Hoang Nguyen']; pick by score",
+  "answer": "Lan Hoang Nguyen",
+  "pattern": "t01_samelast_superlative",
+  "skeleton": [
+   "among",
+   "other",
+   "people",
+   "share",
+   "lowest",
+   "scorer",
+   "lowest"
+  ]
+ },
+ {
+  "id": "hard:H016",
+  "files": [
+   "p4_t01.xlsx"
+  ],
+  "question": "Among the other people who share a last name with the earliest admitted person, who was admitted earliest? Answer with the full name in the order first, middle, last name, separated by single spaces.",
+  "reading": "3 steps: anchor=An Anh Ngo (last=Ngo); group=['Minh Thi Ngo', 'Nga Anh Ngo', 'Ha Bao Ngo']; pick by adm",
+  "answer": "Nga Anh Ngo",
+  "pattern": "t01_samelast_superlative",
+  "skeleton": [
+   "among",
+   "other",
+   "people",
+   "share",
+   "earliest",
+   "admitted",
+   "person",
+   "admitted",
+   "earliest"
+  ]
+ },
+ {
+  "id": "hard:H034",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "Among the categories that sit directly under 'Shelter' in the hierarchy, which had the highest seasonally adjusted percent change from September 2024 to October 2024? Answer with only the category name, without footnote markers.",
+  "reading": "2 steps: children of Shelter: ['Rent of primary residence', \"Owners' equivalent rent of residences\"]",
+  "answer": "Owners' equivalent rent of residences",
+  "pattern": "t03_child_argmax",
+  "skeleton": [
+   "among",
+   "categories",
+   "sit",
+   "directly",
+   "under",
+   "hierarchy",
+   "highest",
+   "september",
+   "october"
+  ]
+ },
+ {
+  "id": "hard:H035",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "Among the categories that sit directly under 'Energy' in the hierarchy, which had the lowest unadjusted 12-month percent change (October 2023 to October 2024)? Answer with only the category name, without footnote markers.",
+  "reading": "2 steps: children of Energy: ['Energy commodities', 'Energy services']",
+  "answer": "Energy commodities",
+  "pattern": "t03_child_argmax",
+  "skeleton": [
+   "among",
+   "categories",
+   "sit",
+   "directly",
+   "under",
+   "hierarchy",
+   "lowest",
+   "month",
+   "october",
+   "october"
+  ]
+ },
+ {
+  "id": "hard:H036",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "Among the categories that sit directly under 'All items less food and energy' in the hierarchy, which had the highest seasonally adjusted percent change from September 2024 to October 2024? Answer with only the category name, without footnote markers.",
+  "reading": "2 steps: children of All items less food and energy: ['Commodities less food and energy commodities', 'Services less energy services']",
+  "answer": "Services less energy services",
+  "pattern": "t03_child_argmax",
+  "skeleton": [
+   "among",
+   "categories",
+   "sit",
+   "directly",
+   "under",
+   "hierarchy",
+   "highest",
+   "september",
+   "october"
+  ]
+ },
+ {
+  "id": "hard:H037",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "Among the categories that sit directly under 'Food' in the hierarchy, which had the lowest relative importance as of September 2024? Answer with only the category name, without footnote markers.",
+  "reading": "2 steps: children of Food: ['Food at home', 'Food away from home']",
+  "answer": "Food away from home",
+  "pattern": "t03_child_argmax",
+  "skeleton": [
+   "among",
+   "categories",
+   "sit",
+   "directly",
+   "under",
+   "hierarchy",
+   "lowest",
+   "september"
+  ]
+ },
+ {
+  "id": "hard:H038",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "How many of the categories directly under 'Commodities less food and energy commodities' had a strictly higher unadjusted 12-month percent change (October 2023 to October 2024) than 'Commodities less food and energy commodities' itself? Answer with only the integer.",
+  "reading": "2 steps: compare children vs parent on col G",
+  "answer": "4",
+  "pattern": "t03_children_beat_parent",
+  "skeleton": [
+   "categories",
+   "directly",
+   "under",
+   "strictly",
+   "higher",
+   "month",
+   "october",
+   "october",
+   "than",
+   "itself"
+  ]
+ },
+ {
+  "id": "hard:H039",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "How many of the categories directly under 'Food' had a strictly higher seasonally adjusted percent change from September 2024 to October 2024 than 'Food' itself? Answer with only the integer.",
+  "reading": "2 steps: compare children vs parent on col K",
+  "answer": "0",
+  "pattern": "t03_children_beat_parent",
+  "skeleton": [
+   "categories",
+   "directly",
+   "under",
+   "strictly",
+   "higher",
+   "september",
+   "october",
+   "than",
+   "itself"
+  ]
+ },
+ {
+  "id": "hard:H040",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "How many of the categories directly under 'Commodities less food and energy commodities' had a strictly higher seasonally adjusted percent change from September 2024 to October 2024 than 'Commodities less food and energy commodities' itself? Answer with only the integer.",
+  "reading": "2 steps: compare children vs parent on col K",
+  "answer": "3",
+  "pattern": "t03_children_beat_parent",
+  "skeleton": [
+   "categories",
+   "directly",
+   "under",
+   "strictly",
+   "higher",
+   "september",
+   "october",
+   "than",
+   "itself"
+  ]
+ },
+ {
+  "id": "hard:H041",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "How many of the categories directly under 'Energy commodities' had a strictly higher unadjusted percent change from September 2024 to October 2024 than 'Energy commodities' itself? Answer with only the integer.",
+  "reading": "2 steps: compare children vs parent on col H",
+  "answer": "1",
+  "pattern": "t03_children_beat_parent",
+  "skeleton": [
+   "categories",
+   "directly",
+   "under",
+   "strictly",
+   "higher",
+   "september",
+   "october",
+   "than",
+   "itself"
+  ]
+ },
+ {
+  "id": "hard:H042",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "Take the direct subcategory of 'Food' that carries the largest relative importance. Among that subcategory's own direct subcategories, which had the lowest seasonally adjusted percent change from September 2024 to October 2024? Answer with only the category name, without footnote markers.",
+  "reading": "3 steps: Food -> heaviest child Food at home -> its children ['Cereals and bakery products', 'Meats, poultry, fish, and eggs', 'Dairy and related products', 'Fruits and vegetables', 'Nonalcoholic beverages and beverage materials', 'Other food at home']",
+  "answer": "Meats, poultry, fish, and eggs",
+  "pattern": "t03_heaviest_child_then_grandchild",
+  "skeleton": [
+   "take",
+   "direct",
+   "subcategory",
+   "carries",
+   "largest",
+   "among",
+   "subcategory",
+   "own",
+   "direct",
+   "subcategories",
+   "lowest",
+   "september",
+   "october"
+  ]
+ },
+ {
+  "id": "hard:H043",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "Take the direct subcategory of 'Energy' that carries the largest relative importance. Among that subcategory's own direct subcategories, which had the lowest unadjusted percent change from September 2024 to October 2024? Answer with only the category name, without footnote markers.",
+  "reading": "3 steps: Energy -> heaviest child Energy commodities -> its children ['Fuel oil', 'Motor fuel']",
+  "answer": "Motor fuel",
+  "pattern": "t03_heaviest_child_then_grandchild",
+  "skeleton": [
+   "take",
+   "direct",
+   "subcategory",
+   "carries",
+   "largest",
+   "among",
+   "subcategory",
+   "own",
+   "direct",
+   "subcategories",
+   "lowest",
+   "september",
+   "october"
+  ]
+ },
+ {
+  "id": "hard:H044",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "Take the direct subcategory of 'Services less energy services' that carries the largest relative importance. Among that subcategory's own direct subcategories, which had the highest unadjusted percent change from September 2024 to October 2024? Answer with only the category name, without footnote markers.",
+  "reading": "3 steps: Services less energy services -> heaviest child Shelter -> its children ['Rent of primary residence', \"Owners' equivalent rent of residences\"]",
+  "answer": "Owners' equivalent rent of residences",
+  "pattern": "t03_heaviest_child_then_grandchild",
+  "skeleton": [
+   "take",
+   "direct",
+   "subcategory",
+   "carries",
+   "largest",
+   "among",
+   "subcategory",
+   "own",
+   "direct",
+   "subcategories",
+   "highest",
+   "september",
+   "october"
+  ]
+ },
+ {
+  "id": "hard:H045",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "Take the direct subcategory of 'All items' that carries the largest relative importance. Among that subcategory's own direct subcategories, which had the highest seasonally adjusted percent change from September 2024 to October 2024? Answer with only the category name, without footnote markers.",
+  "reading": "3 steps: All items -> heaviest child All items less food and energy -> its children ['Commodities less food and energy commodities', 'Services less energy services']",
+  "answer": "Services less energy services",
+  "pattern": "t03_heaviest_child_then_grandchild",
+  "skeleton": [
+   "take",
+   "direct",
+   "subcategory",
+   "carries",
+   "largest",
+   "among",
+   "subcategory",
+   "own",
+   "direct",
+   "subcategories",
+   "highest",
+   "september",
+   "october"
+  ]
+ },
+ {
+  "id": "hard:H046",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "How much of the relative importance of 'Energy commodities' is not accounted for by the categories listed directly under it? Answer with only the number rounded to three decimal places.",
+  "reading": "2 steps: C(Energy commodities) - sum C(children)",
+  "answer": "0.078",
+  "pattern": "t03_uncovered_weight",
+  "skeleton": [
+   "not",
+   "accounted",
+   "categories",
+   "listed",
+   "directly",
+   "under"
+  ]
+ },
+ {
+  "id": "hard:H047",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "How much of the relative importance of 'Services less energy services' is not accounted for by the categories listed directly under it? Answer with only the number rounded to three decimal places.",
+  "reading": "2 steps: C(Services less energy services) - sum C(children)",
+  "answer": "11.865",
+  "pattern": "t03_uncovered_weight",
+  "skeleton": [
+   "not",
+   "accounted",
+   "categories",
+   "listed",
+   "directly",
+   "under"
+  ]
+ },
+ {
+  "id": "hard:H048",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "How much of the relative importance of 'Medical care services' is not accounted for by the categories listed directly under it? Answer with only the number rounded to three decimal places.",
+  "reading": "2 steps: C(Medical care services) - sum C(children)",
+  "answer": "2.713",
+  "pattern": "t03_uncovered_weight",
+  "skeleton": [
+   "not",
+   "accounted",
+   "categories",
+   "listed",
+   "directly",
+   "under"
+  ]
+ },
+ {
+  "id": "hard:H049",
+  "files": [
+   "p4_t03.xlsx"
+  ],
+  "question": "How much of the relative importance of 'Shelter' is not accounted for by the categories listed directly under it? Answer with only the number rounded to three decimal places.",
+  "reading": "2 steps: C(Shelter) - sum C(children)",
+  "answer": "1.833",
+  "pattern": "t03_uncovered_weight",
+  "skeleton": [
+   "not",
+   "accounted",
+   "categories",
+   "listed",
+   "directly",
+   "under"
+  ]
+ },
+ {
+  "id": "hard:H105",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "In the industry that employs the most women as construction and extraction workers, what percentage of women employed in that industry are managers and business or financial operations staff? Answer with only the number rounded to one decimal place.",
+  "reading": "3 steps: argmax women/J -> Construction; C/B",
+  "answer": "33.6",
+  "pattern": "t07_argmax_industry_then_share",
+  "skeleton": [
+   "industry",
+   "employs",
+   "most",
+   "workers",
+   "percentage",
+   "industry",
+   "managers",
+   "staff"
+  ]
+ },
+ {
+  "id": "hard:H106",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "In the industry that employs the most White workers as managers and business or financial operations staff, what percentage of White workers employed in that industry are service workers outside protective services? Answer with only the number rounded to one decimal place.",
+  "reading": "3 steps: argmax white/C -> Professional and business services; F/B",
+  "answer": "15.7",
+  "pattern": "t07_argmax_industry_then_share",
+  "skeleton": [
+   "industry",
+   "employs",
+   "most",
+   "workers",
+   "managers",
+   "staff",
+   "percentage",
+   "workers",
+   "industry",
+   "workers",
+   "outside"
+  ]
+ },
+ {
+  "id": "hard:H107",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "In the industry that employs the most workers as production workers, what percentage of all workers employed in that industry are protective service workers? Answer with only the number rounded to one decimal place.",
+  "reading": "3 steps: argmax all/L -> Manufacturing; E/B",
+  "answer": "0.3",
+  "pattern": "t07_argmax_industry_then_share",
+  "skeleton": [
+   "industry",
+   "employs",
+   "most",
+   "workers",
+   "workers",
+   "percentage",
+   "workers",
+   "industry",
+   "workers"
+  ]
+ },
+ {
+  "id": "hard:H108",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "In the industry that employs the most women as transportation and material moving workers, what percentage of women employed in that industry are office and administrative support staff? Answer with only the number rounded to one decimal place.",
+  "reading": "3 steps: argmax women/M -> Wholesale and retail trade; H/B",
+  "answer": "15.0",
+  "pattern": "t07_argmax_industry_then_share",
+  "skeleton": [
+   "industry",
+   "employs",
+   "most",
+   "workers",
+   "percentage",
+   "industry",
+   "staff"
+  ]
+ },
+ {
+  "id": "hard:H109",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "In the industry that employs the most Asian workers as protective service workers, what percentage of Asian workers employed in that industry are office and administrative support staff? Answer with only the number rounded to one decimal place.",
+  "reading": "3 steps: argmax asian/E -> Public administration; H/B",
+  "answer": "10.3",
+  "pattern": "t07_argmax_industry_then_share",
+  "skeleton": [
+   "industry",
+   "employs",
+   "most",
+   "workers",
+   "workers",
+   "percentage",
+   "workers",
+   "industry",
+   "staff"
+  ]
+ },
+ {
+  "id": "hard:H110",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "Among major industries with at least 50 thousand managers and business or financial operations staff, which has the lowest share of women among its managers and business or financial operations staff? Answer with only the industry name as written in the table, without footnote markers.",
+  "reading": "3 steps: women/all for col C",
+  "answer": "Construction",
+  "pattern": "t07_female_share_occupation",
+  "skeleton": [
+   "among",
+   "major",
+   "industries",
+   "least",
+   "thousand",
+   "managers",
+   "staff",
+   "lowest",
+   "share",
+   "among",
+   "managers",
+   "staff"
+  ]
+ },
+ {
+  "id": "hard:H111",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "Among major industries with at least 50 thousand construction and extraction workers, which has the lowest share of women among its construction and extraction workers? Answer with only the industry name as written in the table, without footnote markers.",
+  "reading": "3 steps: women/all for col J",
+  "answer": "Transportation and utilities",
+  "pattern": "t07_female_share_occupation",
+  "skeleton": [
+   "among",
+   "major",
+   "industries",
+   "least",
+   "thousand",
+   "workers",
+   "lowest",
+   "share",
+   "among",
+   "workers"
+  ]
+ },
+ {
+  "id": "hard:H112",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "Among major industries with at least 50 thousand farming, fishing, and forestry workers, which has the highest share of women among its farming, fishing, and forestry workers? Answer with only the industry name as written in the table, without footnote markers.",
+  "reading": "3 steps: women/all for col I",
+  "answer": "Wholesale and retail trade",
+  "pattern": "t07_female_share_occupation",
+  "skeleton": [
+   "among",
+   "major",
+   "industries",
+   "least",
+   "thousand",
+   "workers",
+   "highest",
+   "share",
+   "among",
+   "workers"
+  ]
+ },
+ {
+  "id": "hard:H113",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "Among major industries with at least 50 thousand managers and business or financial operations staff, which has the highest share of women among its managers and business or financial operations staff? Answer with only the industry name as written in the table, without footnote markers.",
+  "reading": "3 steps: women/all for col C",
+  "answer": "Education and health services",
+  "pattern": "t07_female_share_occupation",
+  "skeleton": [
+   "among",
+   "major",
+   "industries",
+   "least",
+   "thousand",
+   "managers",
+   "staff",
+   "highest",
+   "share",
+   "among",
+   "managers",
+   "staff"
+  ]
+ },
+ {
+  "id": "hard:H114",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "Grouping occupations into the five broad groups of the table, which broad group employs the most men in Public administration? Answer with the broad occupation group name as written in the table.",
+  "reading": "3 steps: sum sub-columns per broad group; largest single sub-column is E in a different group",
+  "answer": "Management, professional, and related occupations",
+  "pattern": "t07_major_group_needs_sum",
+  "skeleton": [
+   "grouping",
+   "into",
+   "five",
+   "broad",
+   "groups",
+   "table",
+   "broad",
+   "group",
+   "employs",
+   "most"
+  ]
+ },
+ {
+  "id": "hard:H115",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "Adding up the major industry groups only (not their sub-industries), how many Black workers are transportation and material moving workers? Answer with only the integer, without commas or units.",
+  "reading": "2 steps: sum 13 major rows col M",
+  "answer": "2350",
+  "pattern": "t07_major_sum_no_double_count",
+  "skeleton": [
+   "adding",
+   "major",
+   "industry",
+   "groups",
+   "not",
+   "sub",
+   "industries",
+   "workers",
+   "workers"
+  ]
+ },
+ {
+  "id": "hard:H116",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "Adding up the major industry groups only (not their sub-industries), how many White workers are construction and extraction workers? Answer with only the integer, without commas or units.",
+  "reading": "2 steps: sum 13 major rows col J",
+  "answer": "7345",
+  "pattern": "t07_major_sum_no_double_count",
+  "skeleton": [
+   "adding",
+   "major",
+   "industry",
+   "groups",
+   "not",
+   "sub",
+   "industries",
+   "workers",
+   "workers"
+  ]
+ },
+ {
+  "id": "hard:H117",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "Adding up the major industry groups only (not their sub-industries), how many Asian workers are office and administrative support staff? Answer with only the integer, without commas or units.",
+  "reading": "2 steps: sum 13 major rows col H",
+  "answer": "795",
+  "pattern": "t07_major_sum_no_double_count",
+  "skeleton": [
+   "adding",
+   "major",
+   "industry",
+   "groups",
+   "not",
+   "sub",
+   "industries",
+   "workers",
+   "staff"
+  ]
+ },
+ {
+  "id": "hard:H118",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "Adding up the major industry groups only (not their sub-industries), how many Black workers are service workers outside protective services? Answer with only the integer, without commas or units.",
+  "reading": "2 steps: sum 13 major rows col F",
+  "answer": "3752",
+  "pattern": "t07_major_sum_no_double_count",
+  "skeleton": [
+   "adding",
+   "major",
+   "industry",
+   "groups",
+   "not",
+   "sub",
+   "industries",
+   "workers",
+   "workers",
+   "outside"
+  ]
+ },
+ {
+  "id": "hard:H119",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "Within Manufacturing, which of its two sub-industries has the larger share of Black workers working as office and administrative support staff? Answer with only the sub-industry name as written in the table.",
+  "reading": "3 steps: H/B for rows 13,14 (black)",
+  "answer": "Nondurable goods",
+  "pattern": "t07_sub_industry_share",
+  "skeleton": [
+   "within",
+   "two",
+   "sub",
+   "industries",
+   "larger",
+   "share",
+   "workers",
+   "working",
+   "staff"
+  ]
+ },
+ {
+  "id": "hard:H120",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "Within Wholesale and retail trade, which of its two sub-industries has the larger share of Black workers working as sales workers? Answer with only the sub-industry name as written in the table.",
+  "reading": "3 steps: G/B for rows 16,17 (black)",
+  "answer": "Retail trade",
+  "pattern": "t07_sub_industry_share",
+  "skeleton": [
+   "within",
+   "two",
+   "sub",
+   "industries",
+   "larger",
+   "share",
+   "workers",
+   "working",
+   "workers"
+  ]
+ },
+ {
+  "id": "hard:H121",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "Within Other services, which of its two sub-industries has the larger share of women working as construction and extraction workers? Answer with only the sub-industry name as written in the table.",
+  "reading": "3 steps: J/B for rows 25,26 (women)",
+  "answer": "Private households",
+  "pattern": "t07_sub_industry_share",
+  "skeleton": [
+   "within",
+   "two",
+   "sub",
+   "industries",
+   "larger",
+   "share",
+   "working",
+   "workers"
+  ]
+ },
+ {
+  "id": "hard:H122",
+  "files": [
+   "p4_t07.xlsx"
+  ],
+  "question": "Within Other services, which of its two sub-industries has the larger share of all workers working as installation, maintenance, and repair workers? Answer with only the sub-industry name as written in the table.",
+  "reading": "3 steps: K/B for rows 25,26 (all)",
+  "answer": "Other services, except private households",
+  "pattern": "t07_sub_industry_share",
+  "skeleton": [
+   "within",
+   "two",
+   "sub",
+   "industries",
+   "larger",
+   "share",
+   "workers",
+   "working",
+   "workers"
+  ]
+ },
+ {
+  "id": "hard:H123",
+  "files": [
+   "p4_t08.xlsx"
+  ],
+  "question": "Of all persons at work who worked 35 to 48 hours, what percentage were in agriculture and related industries? Answer with only the number rounded to two decimal places.",
+  "reading": "2 steps: C/B over rows (12, 13, 15)",
+  "answer": "0.99",
+  "pattern": "t08_agri_share_of_range",
+  "skeleton": [
+   "worked",
+   "percentage"
+  ]
+ },
+ {
+  "id": "hard:H124",
+  "files": [
+   "p4_t08.xlsx"
+  ],
+  "question": "Of all persons at work who worked 1 to 29 hours, what percentage were in agriculture and related industries? Answer with only the number rounded to two decimal places.",
+  "reading": "2 steps: C/B over rows (7, 8, 9)",
+  "answer": "1.84",
+  "pattern": "t08_agri_share_of_range",
+  "skeleton": [
+   "worked",
+   "percentage"
+  ]
+ },
+ {
+  "id": "hard:H125",
+  "files": [
+   "p4_t08.xlsx"
+  ],
+  "question": "Of all persons at work who worked 49 hours or more, what percentage were in agriculture and related industries? Answer with only the number rounded to two decimal places.",
+  "reading": "2 steps: C/B over rows (16, 17)",
+  "answer": "2.78",
+  "pattern": "t08_agri_share_of_range",
+  "skeleton": [
+   "worked",
+   "more",
+   "percentage"
+  ]
+ },
+ {
+  "id": "hard:H126",
+  "files": [
+   "p4_t08.xlsx"
+  ],
+  "question": "Computed from the counts of persons at work, what percentage of workers in agriculture and related industries worked 15 to 34 hours? Answer with only the number rounded to two decimal places.",
+  "reading": "2 steps: sum rows (9, 10) / row 5, col C",
+  "answer": "18.86",
+  "pattern": "t08_range_share_from_counts",
+  "skeleton": [
+   "computed",
+   "counts",
+   "percentage",
+   "workers",
+   "worked"
+  ]
+ },
+ {
+  "id": "hard:H127",
+  "files": [
+   "p4_t08.xlsx"
+  ],
+  "question": "Computed from the counts of persons at work, what percentage of workers in agriculture and related industries worked fewer than 15 hours? Answer with only the number rounded to two decimal places.",
+  "reading": "2 steps: sum rows (7, 8) / row 5, col C",
+  "answer": "8.08",
+  "pattern": "t08_range_share_from_counts",
+  "skeleton": [
+   "computed",
+   "counts",
+   "percentage",
+   "workers",
+   "worked",
+   "fewer",
+   "than"
+  ]
+ },
+ {
+  "id": "hard:H128",
+  "files": [
+   "p4_t08.xlsx"
+  ],
+  "question": "Computed from the counts of persons at work, what percentage of workers in all industries worked fewer than 15 hours? Answer with only the number rounded to two decimal places.",
+  "reading": "2 steps: sum rows (7, 8) / row 5, col B",
+  "answer": "4.57",
+  "pattern": "t08_range_share_from_counts",
+  "skeleton": [
+   "computed",
+   "counts",
+   "percentage",
+   "workers",
+   "worked",
+   "fewer",
+   "than"
+  ]
+ },
+ {
+  "id": "hard:H129",
+  "files": [
+   "p4_t09.xlsx"
+  ],
+  "question": "Among the major industries for wage and salary workers, take the one with the longest average workweek. What percentage of its wage and salary workers worked part time for economic reasons? Answer with only the number rounded to one decimal place.",
+  "reading": "3 steps: argmax H -> Mining, quarrying, and oil and gas extraction; D/B",
+  "answer": "0.5",
+  "pattern": "t09_argmax_hours_then_share",
+  "skeleton": [
+   "among",
+   "major",
+   "take",
+   "longest",
+   "workweek",
+   "percentage"
+  ]
+ },
+ {
+  "id": "hard:H130",
+  "files": [
+   "p4_t09.xlsx"
+  ],
+  "question": "Among the major industries for wage and salary workers other than Mining, quarrying, and oil and gas extraction, take the one with the longest average workweek. What percentage of its wage and salary workers worked part time for economic reasons? Answer with only the number rounded to one decimal place.",
+  "reading": "3 steps: argmax H -> Manufacturing; D/B",
+  "answer": "1.1",
+  "pattern": "t09_argmax_hours_then_share",
+  "skeleton": [
+   "among",
+   "major",
+   "than",
+   "take",
+   "longest",
+   "workweek",
+   "percentage"
+  ]
+ },
+ {
+  "id": "hard:H131",
+  "files": [
+   "p4_t09.xlsx"
+  ],
+  "question": "Among the major industries for wage and salary workers other than Mining, quarrying, and oil and gas extraction, take the one with the longest average workweek. What percentage of its wage and salary workers worked part time (1 to 34 hours)? Answer with only the number rounded to one decimal place.",
+  "reading": "3 steps: argmax H -> Manufacturing; C/B",
+  "answer": "10.3",
+  "pattern": "t09_argmax_hours_then_share",
+  "skeleton": [
+   "among",
+   "major",
+   "than",
+   "take",
+   "longest",
+   "workweek",
+   "percentage"
+  ]
+ },
+ {
+  "id": "hard:H132",
+  "files": [
+   "p4_t09.xlsx"
+  ],
+  "question": "Among the major industries for wage and salary workers other than Mining, quarrying, and oil and gas extraction, take the one with the longest average workweek among usual full-time workers. What percentage of its wage and salary workers worked part time for economic reasons? Answer with only the number rounded to one decimal place.",
+  "reading": "3 steps: argmax I -> Transportation and utilities; D/B",
+  "answer": "3.1",
+  "pattern": "t09_argmax_hours_then_share",
+  "skeleton": [
+   "among",
+   "major",
+   "than",
+   "take",
+   "longest",
+   "workweek",
+   "among",
+   "usual",
+   "percentage"
+  ]
+ },
+ {
+  "id": "hard:H133",
+  "files": [
+   "p4_t09.xlsx"
+  ],
+  "question": "Across the major industries whose wage and salary workers average more than 40 hours a week (total at work), how many wage and salary workers worked 35 hours or more in total? Answer with only the integer, without commas or units.",
+  "reading": "2 steps: rows [9, 10, 11, 15, 17, 24]",
+  "answer": "45078",
+  "pattern": "t09_filter_sum",
+  "skeleton": [
+   "across",
+   "major",
+   "whose",
+   "than",
+   "week"
+  ]
+ },
+ {
+  "id": "hard:H134",
+  "files": [
+   "p4_t09.xlsx"
+  ],
+  "question": "Across the major industries whose wage and salary workers average more than 41 hours a week (total at work), how many wage and salary workers worked 35 hours or more in total? Answer with only the integer, without commas or units.",
+  "reading": "2 steps: rows [9, 11]",
+  "answer": "13856",
+  "pattern": "t09_filter_sum",
+  "skeleton": [
+   "across",
+   "major",
+   "whose",
+   "than",
+   "week"
+  ]
+ },
+ {
+  "id": "hard:H135",
+  "files": [
+   "p4_t09.xlsx"
+  ],
+  "question": "Which class of worker has the highest share of persons who worked 1 to 34 hours for noneconomic reasons: wage and salary workers, unincorporated self-employed workers, or unpaid family workers? Answer with the class exactly as written in this question.",
+  "reading": "2 steps: (E+F)/B by class",
+  "answer": "unpaid family workers",
+  "pattern": "t09_noneconomic_by_class",
+  "skeleton": [
+   "class",
+   "worker",
+   "highest",
+   "share"
+  ]
+ },
+ {
+  "id": "hard:H136",
+  "files": [
+   "p4_t09.xlsx"
+  ],
+  "question": "Among the major industries for wage and salary workers, which has the highest share of workers who worked part time for economic reasons? Answer with only the industry name as written in the table, without footnote markers.",
+  "reading": "2 steps: D/B",
+  "answer": "Leisure and hospitality",
+  "pattern": "t09_share_argmax",
+  "skeleton": [
+   "among",
+   "major",
+   "highest",
+   "share"
+  ]
+ },
+ {
+  "id": "hard:H137",
+  "files": [
+   "p4_t09.xlsx"
+  ],
+  "question": "Among the major industries for wage and salary workers, which has the lowest share of workers who worked part time for economic reasons? Answer with only the industry name as written in the table, without footnote markers.",
+  "reading": "2 steps: D/B",
+  "answer": "Mining, quarrying, and oil and gas extraction",
+  "pattern": "t09_share_argmax",
+  "skeleton": [
+   "among",
+   "major",
+   "lowest",
+   "share"
+  ]
+ },
+ {
+  "id": "cross:X026",
+  "files": [
+   "p4_t07.xlsx",
+   "p4_t09.xlsx"
+  ],
+  "question": "Excluding agriculture, find the industry that employs the most women as farming, fishing, and forestry workers. In that industry, what are the average weekly hours of wage and salary workers who usually work full time? Answer with only the number rounded to one decimal place.",
+  "reading": "3 steps: t07 argmax women/I -> Wholesale and retail trade; t09 I",
+  "answer": "41.8",
+  "pattern": "x_t07_to_t09_avg_hours",
+  "skeleton": [
+   "excluding",
+   "industry",
+   "employs",
+   "most",
+   "industry",
+   "weekly"
+  ]
+ },
+ {
+  "id": "cross:X027",
+  "files": [
+   "p4_t07.xlsx",
+   "p4_t09.xlsx"
+  ],
+  "question": "Excluding agriculture, find the industry that employs the most White workers as construction and extraction workers. In that industry, what are the average weekly hours of wage and salary workers who usually work full time? Answer with only the number rounded to one decimal place.",
+  "reading": "3 steps: t07 argmax white/J -> Construction; t09 I",
+  "answer": "41.9",
+  "pattern": "x_t07_to_t09_avg_hours",
+  "skeleton": [
+   "excluding",
+   "industry",
+   "employs",
+   "most",
+   "industry",
+   "weekly"
+  ]
+ },
+ {
+  "id": "cross:X028",
+  "files": [
+   "p4_t07.xlsx",
+   "p4_t09.xlsx"
+  ],
+  "question": "Excluding agriculture, find the industry that employs the most workers as sales workers. In that industry, what are the average weekly hours of wage and salary workers (total at work)? Answer with only the number rounded to one decimal place.",
+  "reading": "3 steps: t07 argmax all/G -> Wholesale and retail trade; t09 H",
+  "answer": "37.0",
+  "pattern": "x_t07_to_t09_avg_hours",
+  "skeleton": [
+   "excluding",
+   "industry",
+   "employs",
+   "most",
+   "industry",
+   "weekly"
+  ]
+ },
+ {
+  "id": "cross:X029",
+  "files": [
+   "p4_t07.xlsx",
+   "p4_t09.xlsx"
+  ],
+  "question": "Excluding agriculture, find the industry that employs the most White workers as managers and business or financial operations staff. In that industry, what are the average weekly hours of wage and salary workers (total at work)? Answer with only the number rounded to one decimal place.",
+  "reading": "3 steps: t07 argmax white/C -> Professional and business services; t09 H",
+  "answer": "39.7",
+  "pattern": "x_t07_to_t09_avg_hours",
+  "skeleton": [
+   "excluding",
+   "industry",
+   "employs",
+   "most",
+   "managers",
+   "staff",
+   "industry",
+   "weekly"
+  ]
+ },
+ {
+  "id": "cross:X030",
+  "files": [
+   "p4_t07.xlsx",
+   "p4_t09.xlsx"
+  ],
+  "question": "Excluding agriculture, find the industry that employs the most workers as installation, maintenance, and repair workers. In that industry, what are the average weekly hours of wage and salary workers who usually work full time? Answer with only the number rounded to one decimal place.",
+  "reading": "3 steps: t07 argmax all/K -> Other services; t09 I",
+  "answer": "41.7",
+  "pattern": "x_t07_to_t09_avg_hours",
+  "skeleton": [
+   "excluding",
+   "industry",
+   "employs",
+   "most",
+   "industry",
+   "weekly"
+  ]
+ },
+ {
+  "id": "cross:X035",
+  "files": [
+   "p4_t09.xlsx",
+   "p4_t07.xlsx"
+  ],
+  "question": "Find the industry whose wage and salary workers have the highest share who worked 35 hours or more. In that industry, which of the five broad occupation groups employs the most White workers? Answer with the broad occupation group name as written in the table.",
+  "reading": "4 steps: t09 G/B -> Mining, quarrying, and oil and gas extraction; t07 white sum sub-columns",
+  "answer": "Natural resources, construction, and maintenance occupations",
+  "pattern": "x_t09_to_t07_broad_occ",
+  "skeleton": [
+   "industry",
+   "whose",
+   "highest",
+   "share",
+   "industry",
+   "five",
+   "broad",
+   "occupation",
+   "groups",
+   "employs",
+   "most"
+  ]
+ },
+ {
+  "id": "cross:X036",
+  "files": [
+   "p4_t09.xlsx",
+   "p4_t07.xlsx"
+  ],
+  "question": "Find the industry whose wage and salary workers have the lowest share who worked part time (1 to 34 hours). In that industry, which of the five broad occupation groups employs the most women? Answer with the broad occupation group name as written in the table.",
+  "reading": "4 steps: t09 C/B -> Mining, quarrying, and oil and gas extraction; t07 women sum sub-columns",
+  "answer": "Management, professional, and related occupations",
+  "pattern": "x_t09_to_t07_broad_occ",
+  "skeleton": [
+   "industry",
+   "whose",
+   "lowest",
+   "share",
+   "industry",
+   "five",
+   "broad",
+   "occupation",
+   "groups",
+   "employs",
+   "most"
+  ]
+ },
+ {
+  "id": "cross:X037",
+  "files": [
+   "p4_t09.xlsx",
+   "p4_t07.xlsx"
+  ],
+  "question": "Find the industry whose wage and salary workers have the highest share who worked part time (1 to 34 hours). In that industry, which of the five broad occupation groups employs the most White workers? Answer with the broad occupation group name as written in the table.",
+  "reading": "4 steps: t09 C/B -> Leisure and hospitality; t07 white sum sub-columns",
+  "answer": "Service occupations",
+  "pattern": "x_t09_to_t07_broad_occ",
+  "skeleton": [
+   "industry",
+   "whose",
+   "highest",
+   "share",
+   "industry",
+   "five",
+   "broad",
+   "occupation",
+   "groups",
+   "employs",
+   "most"
+  ]
+ }
+]
