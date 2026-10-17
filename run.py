@@ -108,8 +108,8 @@ def main():
                     help="OpenRouter API key (or the OPENROUTER_API_KEY environment variable)")
     ap.add_argument("--openrouter-model", help="model id, default qwen/qwen3.7-flash")
     ap.add_argument("--openrouter-base-url", help="default https://openrouter.ai/api/v1")
-    ap.add_argument("--workers", type=int, default=int(os.environ.get("QA_WORKERS", 6)),
-                    help="questions processed in parallel (default 6)")
+    ap.add_argument("--workers", type=int, default=int(os.environ.get("QA_WORKERS", 20)),
+                    help="questions processed in parallel (default 20; LLM calls are I/O bound)")
     ap.add_argument("--ids", help="comma-separated subset of query ids (debugging)")
     ap.add_argument("--trace", help="optional JSONL file with per-question candidates and decisions")
     args = ap.parse_args()
@@ -185,7 +185,7 @@ def main():
         return q["id"], ans, tr
 
     traces = {}
-    with cf.ThreadPoolExecutor(max(1, args.workers)) as ex:
+    with cf.ThreadPoolExecutor(max(1, min(args.workers, len(queries)))) as ex:
         for fut in cf.as_completed([ex.submit(one, q) for q in queries]):
             qid, ans, tr = fut.result()
             with lock:

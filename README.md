@@ -60,7 +60,7 @@ python run.py "<input>" submission.csv
 
 | Tham số | Mặc định | Ý nghĩa |
 |---|---|---|
-| `--workers` | `6` (hoặc `QA_WORKERS`) | Số câu hỏi xử lý song song |
+| `--workers` | `20` (hoặc `QA_WORKERS`) | Số câu hỏi xử lý song song (gọi LLM chủ yếu là chờ mạng). Số chương trình sinh ra chạy cùng lúc bị giới hạn riêng bởi `QA_EXEC_SLOTS` (mặc định 4) |
 | `--ids` | – | Chỉ chạy các id liệt kê, cách nhau bởi dấu phẩy (debug) |
 | `--trace` | – | Ghi JSONL: các ứng viên, đường quyết định, token, độ trễ của từng câu |
 
@@ -102,10 +102,10 @@ File gốc để chỉnh sửa: `docs/architecture.drawio` (mở bằng app.diag
 
 ## 5. Kết quả trên dữ liệu công khai của BTC (Qwen3.7 Flash, 6 luồng)
 
-| Bộ dữ liệu | Exact Match | Thời gian cả bộ | Trung vị / chậm nhất mỗi câu | Token/câu | Chi phí/câu (TB / tối đa) |
+| Bộ dữ liệu | Exact Match | Thời gian cả bộ (Docker, 6 vCPU, 1 GB) | Trung vị / chậm nhất mỗi câu (độ trễ) | Token/câu | Chi phí/câu (TB / tối đa) |
 |---|---|---|---|---|---|
-| Public 1 (20 câu) | 18/20 | 107 s (85 s trong Docker) | 5.5 s / 92 s | 16k | $0.0007 / $0.0030 |
-| Public 2 (30 câu) | 29/30 | 205 s | 7.8 s / 98 s | 16k | $0.0007 / $0.0025 |
+| Public 1 (20 câu) | 18/20 | 44 s | 5.5 s / 92 s | 16k | $0.0007 / $0.0030 |
+| Public 2 (30 câu) | 29/30 | 103 s | 7.8 s / 98 s | 18k | $0.0007 / $0.0025 |
 
 Chi phí tính theo giá niêm yết của OpenRouter ($0.03/M token vào, $0.13/M token ra); giới hạn của đề là $0.10/câu. Ở Public 2, câu 20 có hai cách hiểu và kết quả thay đổi giữa các lần chạy (có lần đạt 30/30).
 
@@ -118,8 +118,8 @@ Chi phí tính theo giá niêm yết của OpenRouter ($0.03/M token vào, $0.13
 | `submission.csv` đúng hai cột, mỗi id một dòng, chỉ đáp án cuối, sắp theo id tăng dần | `run.py`: loại id trùng, sắp id, ghi file ngay từ đầu và sau mỗi câu, đáp án một dòng |
 | Qwen3.7 Flash qua OpenRouter, khóa ngoài mã nguồn | `excelqa/llm.py`: model/endpoint lấy từ `--openrouter-model`/`--openrouter-base-url` (mặc định `qwen/qwen3.7-flash`), khóa chỉ đọc từ `--openrouter-key` / biến môi trường / `.env` |
 | ≤ $0.10/câu kể cả retry | `max_tokens` 6000 mỗi lần gọi, chỉ retry lỗi mạng/quá tải, tối đa khoảng 11 lần gọi mỗi câu; bản đồ gửi LLM bị chặn ở `QA_MAP_MAX_CHARS` (40k ký tự) và khối FOCUS ở 20k ký tự, nên kể cả trường hợp xấu nhất (mọi lần gọi đều dùng hết trần, tính theo bậc giá ≥32k token của OpenRouter) vẫn dưới $0.10/câu. Đo thực tế trên hai bộ public: trung bình $0.0009, cao nhất $0.0033 mỗi câu |
-| ≤ 40 phút cho 20 câu (6 vCPU) | 6 câu song song; Public 1 chạy hết 80–110 s. Ngân sách 36 phút cho 20 câu; sau 85% (khoảng 30,6 phút) không leo thang nữa; hết ngân sách thì dừng cứng, ghi file, thoát mã 0 |
-| ≤ 1 GB khi chạy | Đã chạy Public 1 trong Docker với `--memory=1g`; ảnh 309 MB. Workbook được parse một lần; mỗi chương trình sinh ra bị giới hạn 128 MB thêm; thư viện số chạy 1 luồng |
+| ≤ 40 phút cho 20 câu (6 vCPU) | Mọi câu chạy song song; Public 1 chạy hết 44 s, Public 2 103 s trong Docker. Ngân sách 36 phút cho 20 câu; sau 85% (khoảng 30,6 phút) không leo thang nữa; hết ngân sách thì dừng cứng, ghi file, thoát mã 0 |
+| ≤ 1 GB khi chạy | Đỉnh bộ nhớ đo bằng cgroup trong Docker `--memory=1g`: 170 MiB (Public 1), 131 MiB (Public 2); ảnh 309 MB. Workbook được parse một lần; tối đa 4 chương trình sinh ra chạy cùng lúc, mỗi chương trình bị giới hạn 128 MB thêm; thư viện số chạy 1 luồng |
 | ZIP ≤ 100 MB | Mã nguồn khoảng 0.2 MB, không kèm dữ liệu |
 
 ## 7. Cấu trúc thư mục

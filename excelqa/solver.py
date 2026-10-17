@@ -23,6 +23,7 @@ import multiprocessing as mp
 import os
 import re
 import sys
+import threading
 import time
 from collections import Counter
 from decimal import ROUND_HALF_UP, Decimal
@@ -39,6 +40,9 @@ from .ground import answer_template, expected_type, ground, type_ok
 from .ir import SUSPICIOUS, TableIR, build_many
 
 EXEC_TIMEOUT = 25
+# Questions run concurrently (LLM calls are I/O bound); generated programs are forked processes, so only a few run
+# at a time to keep the whole run within the 1 GB memory limit.
+_EXEC_SLOTS = threading.BoundedSemaphore(int(os.environ.get("QA_EXEC_SLOTS", 4)))
 EXEC_MAX_MB = int(os.environ.get("QA_EXEC_MAX_MB", 128))   # extra memory one generated program may use
 MAX_ROWS_FULL = 150            # tables up to this size are shown with all values
 DIRECT_MAX_CHARS = 45000       # direct reading only when the whole map fits comfortably
@@ -388,6 +392,11 @@ def _rss_mb(pid: int) -> float:
 
 
 def execute(code: str, key: str):
+    with _EXEC_SLOTS:
+        return _execute(code, key)
+
+
+def _execute(code: str, key: str):
     ctx = mp.get_context("fork")
     q = ctx.Queue()
     p = ctx.Process(target=_run, args=(code, key, q))
