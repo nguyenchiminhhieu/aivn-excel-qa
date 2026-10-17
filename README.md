@@ -72,6 +72,8 @@ python run.py "<input>" submission.csv
 | `QA_CALL_TIMEOUT` | `90` | Timeout mỗi yêu cầu HTTP (giây) |
 | `QA_MAP_MAX_CHARS` | `40000` | Trần độ dài bản đồ bảng gửi cho LLM, để chi phí mỗi câu có trần dưới $0.10 kể cả với workbook rất lớn; bản đồ của bộ public đều dưới 20k ký tự nên không bị cắt |
 | `QA_EXEC_MAX_MB` | `128` | Bộ nhớ thêm tối đa cho mỗi chương trình pandas do LLM sinh; vượt thì bị dừng |
+| `QA_CONV_POS` | `system` | Vị trí khối quy ước đáp án: `system` (system prompt) hoặc `end` (sau dữ liệu, trước câu hỏi) |
+| `QA_EXAMPLES` | `0` | Số ví dụ đã giải (từ workbook khác) chèn vào mỗi câu; 0 = tắt |
 | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | Endpoint |
 
 File `.env` được tìm ở thư mục hiện tại, sau đó ở thư mục gốc dự án. Biến môi trường thật luôn được ưu tiên. Không đưa khóa vào mã nguồn và không commit `.env`.
@@ -85,7 +87,7 @@ python scripts/evaluate.py submission.csv "<input>/sample_submission.csv"   # ho
 
 ![Kiến trúc](docs/architecture.png)
 
-File gốc để chỉnh sửa: `docs/architecture.drawio` (mở bằng app.diagrams.net hoặc extension Draw.io Integration của VS Code; trang 2 là tech stack).
+File gốc để chỉnh sửa: `docs/architecture.drawio` (mở bằng app.diagrams.net hoặc extension Draw.io Integration của VS Code; trang 2 là tech stack). Thiết kế prompt, 9 quy ước đáp án, nguồn gốc từng quy ước và quy trình đánh giá: `docs/PROMPT_DESIGN.md`.
 
 **Phần A – mỗi workbook, chạy một lần, không gọi LLM** (`excelqa/excel_parser.py`, `excelqa/ir.py`)
 - Đọc ô bằng openpyxl: lấy giá trị cache của công thức (kể cả array formula), tự tính khi không có cache (biểu thức được kiểm tra AST theo danh sách trắng); xử lý ô gộp, số/ngày dạng text, dấu thập phân kiểu phẩy, ký hiệu thiếu dữ liệu, ma trận ký hiệu `+/−`.
@@ -131,10 +133,11 @@ excelqa/
   excel_parser.py        đọc và khôi phục cấu trúc bảng (python -m excelqa.excel_parser file.xlsx để xem kết quả parse)
   ir.py                  TableIR: hàng, cột, đường dẫn header, địa chỉ A1
   ground.py              neo câu hỏi vào header (FOCUS), kiểu đáp án, mẫu đáp án
+  examples.py            chọn ví dụ đã giải theo khung câu hỏi (tắt mặc định); kho ví dụ: examples_bank.json
   solver.py              DataFrame + bản đồ, các ứng viên, tiến trình con thực thi, bỏ phiếu, trọng tài
   formatting.py          định dạng đáp án
 scripts/evaluate.py      chấm Exact Match
-docs/                    sơ đồ kiến trúc (draw.io + PNG)
+docs/                    sơ đồ kiến trúc (draw.io + PNG), thiết kế prompt (PROMPT_DESIGN.md)
 ```
 
 ## 8. Giới hạn đã biết
