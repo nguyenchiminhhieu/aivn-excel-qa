@@ -87,26 +87,28 @@ python scripts/evaluate.py submission.csv "<input>/sample_submission.csv"   # ho
 
 ![Kiến trúc](docs/architecture.png)
 
-File gốc để chỉnh sửa: `docs/architecture.drawio` (mở bằng app.diagrams.net hoặc extension Draw.io Integration của VS Code; trang 2 là tech stack). Thiết kế prompt, 9 quy ước đáp án, nguồn gốc từng quy ước và quy trình đánh giá: `docs/PROMPT_DESIGN.md`.
+File gốc để chỉnh sửa: `docs/architecture.drawio` (mở bằng app.diagrams.net hoặc extension Draw.io Integration của VS Code; trang 2 là tech stack). Thiết kế prompt và 9 quy ước đáp án: `docs/PROMPT_DESIGN.md`.
 
 **Phần A – mỗi workbook, chạy một lần, không gọi LLM** (`excelqa/excel_parser.py`, `excelqa/ir.py`)
 - Đọc ô bằng openpyxl: lấy giá trị cache của công thức (kể cả array formula), tự tính khi không có cache (biểu thức được kiểm tra AST theo danh sách trắng); xử lý ô gộp, số/ngày dạng text, dấu thập phân kiểu phẩy, ký hiệu thiếu dữ liệu, ma trận ký hiệu `+/−`.
-- Tách vùng bảng (bảng xếp chồng, bảng cạnh nhau, biểu mẫu key–value) và dựng header nhiều tầng (header xuống dòng, hàng mã định danh, băng năm lặp lại).
-- Dựng cây hàng cha › con từ nhiều tín hiệu: thụt lề, cột Indent Level, hàng tiêu đề nhóm, nhãn khoảng lồng nhau, tổng nhất quán (cha = Σ con), khối nhãn lặp lại, nhãn thời gian. Đánh dấu dòng tổng hợp; bỏ chỉ số chú thích dính vào nhãn.
+- Tách vùng bảng (bảng xếp chồng, bảng cạnh nhau, biểu mẫu key–value) và dựng header nhiều tầng (header xuống dòng, hàng mã định danh, băng năm lặp lại). Khối số liệu không có cột nhãn riêng được gắn lại với cột nhãn bên trái nếu các dòng thẳng hàng, dù cách nhau bao nhiêu cột trống; hai khối chỉ có số không bao giờ bị gộp.
+- Dựng cây hàng cha › con từ nhiều tín hiệu: thụt lề, cột Indent Level, hàng tiêu đề nhóm, nhãn khoảng lồng nhau, tổng nhất quán (cha = Σ con), khối nhãn lặp lại, nhãn thời gian. Khi bảng có từ 2 cột nhãn, nhãn thưa ở cột ngoài (ví dụ tên section chỉ ghi ở dòng đầu) được điền tiếp và trở thành nhóm cha. Đánh dấu dòng tổng hợp; bỏ chỉ số chú thích dính vào nhãn; làm tròn sai số máy của kết quả công thức.
 - Kết quả là **TableIR**: mỗi giá trị kèm đường dẫn header hàng/cột và địa chỉ ô A1.
 
 **Phần B – mỗi câu hỏi** (`excelqa/ground.py`, `excelqa/solver.py`, `excelqa/formatting.py`)
 - **Dữ liệu cho chương trình**: mỗi bảng là một pandas DataFrame `T0, T1, …` (cột `row`, `path`, `level_k`, `is_summary`, `has_children` và tên cột giá trị đọc được) kèm bảng dài `facts`. Lớp ngữ nghĩa cột cho biết cột là rate, average, count, code, year hay date, cộng dồn được không, đơn vị gì; có thêm cột dẫn xuất (tổng nhóm cột con, tuổi tại một ngày).
 - **Neo câu hỏi vào header (FOCUS)**: tách n-gram của câu hỏi, khớp với đường dẫn hàng/cột theo trọng số IDF, rồi đưa các ô liên quan nhất (kèm đường dẫn đầy đủ và địa chỉ A1) lên đầu ngữ cảnh. Không tốn lần gọi LLM.
+- **Prompt** (`docs/PROMPT_DESIGN.md`): một **khối 9 quy ước đáp án** dùng chung, giống hệt nhau ở mọi prompt, có thứ tự ưu tiên (lời lẽ tường minh của câu hỏi luôn thắng). Ứng viên phải nêu cách hiểu trước khi tính: trường `assumptions` trong kế hoạch của chương trình, dòng `Reading:` của ứng viên đọc trực tiếp. Có thể chèn ví dụ đã giải từ workbook khác, chọn theo khung câu hỏi (`QA_EXAMPLES`, mặc định tắt).
 - **Bước 1**: hai ứng viên song song, tắt reasoning: một **chương trình pandas** (kế hoạch JSON trước rồi mới viết code; chạy trong tiến trình con có timeout 25 giây và giới hạn bộ nhớ) và một lượt **đọc trực tiếp bản đồ** khi bản đồ đủ nhỏ. Hai đáp án trùng nhau và có căn cứ trong dữ liệu thì trả lời luôn.
 - **Bước 2** (chỉ khi bước 1 không đồng thuận): thêm 2 chương trình với reasoning `low` (và một lượt đọc trực tiếp `low` nếu bản đồ nhỏ). Ứng viên được lọc theo **kiểu đáp án** câu hỏi yêu cầu (Yes/No, số, danh sách) và theo **mẫu đáp án** nếu câu hỏi cho sẵn (ví dụ `(xxx in xxx)`), rồi bỏ phiếu trên dạng chuẩn hóa (số làm tròn, chữ bỏ dấu câu và hoa thường). Mỗi nhóm phiếu được xuất bằng đúng cách viết trong bảng nếu có. Hòa phiếu thì gọi trọng tài (reasoning `medium`).
+- **Thực thi chương trình**: tiến trình con có timeout, giới hạn bộ nhớ, tối đa 4 chương trình chạy cùng lúc; hàm `int` an toàn với sai số máy (90.9999… thành 91, không cắt thành 90).
 - **Định dạng đáp án**: số chữ số thập phân lấy từ câu hỏi (regex cho tiếng Anh, Việt, Hàn, Trung, Nhật), không có thì theo đặc tả LLM trả về nhưng không thêm số 0 thừa; làm tròn half-up bằng `Decimal`.
 
 ## 5. Kết quả trên dữ liệu công khai của BTC (Qwen3.7 Flash, 6 luồng)
 
 | Bộ dữ liệu | Exact Match | Thời gian cả bộ (Docker, 6 vCPU, 1 GB) | Trung vị / chậm nhất mỗi câu (độ trễ) | Token/câu | Chi phí/câu (TB / tối đa) |
 |---|---|---|---|---|---|
-| Public 1 (20 câu) | 18/20 | 44 s | 5.5 s / 92 s | 16k | $0.0007 / $0.0030 |
+| Public 1 (20 câu) | 19/20 | 44 s | 5.5 s / 92 s | 16k | $0.0007 / $0.0030 |
 | Public 2 (30 câu) | 29/30 | 103 s | 7.8 s / 98 s | 18k | $0.0007 / $0.0025 |
 
 Chi phí tính theo giá niêm yết của OpenRouter ($0.03/M token vào, $0.13/M token ra); giới hạn của đề là $0.10/câu. Ở Public 2, câu 20 có hai cách hiểu và kết quả thay đổi giữa các lần chạy (có lần đạt 30/30).
@@ -121,7 +123,7 @@ Chi phí tính theo giá niêm yết của OpenRouter ($0.03/M token vào, $0.13
 | Qwen3.7 Flash qua OpenRouter, khóa ngoài mã nguồn | `excelqa/llm.py`: model/endpoint lấy từ `--openrouter-model`/`--openrouter-base-url` (mặc định `qwen/qwen3.7-flash`), khóa chỉ đọc từ `--openrouter-key` / biến môi trường / `.env` |
 | ≤ $0.10/câu kể cả retry | `max_tokens` 6000 mỗi lần gọi, chỉ retry lỗi mạng/quá tải, tối đa khoảng 11 lần gọi mỗi câu; bản đồ gửi LLM bị chặn ở `QA_MAP_MAX_CHARS` (40k ký tự) và khối FOCUS ở 20k ký tự, nên kể cả trường hợp xấu nhất (mọi lần gọi đều dùng hết trần, tính theo bậc giá ≥32k token của OpenRouter) vẫn dưới $0.10/câu. Đo thực tế trên hai bộ public: trung bình $0.0009, cao nhất $0.0033 mỗi câu |
 | ≤ 40 phút cho 20 câu (6 vCPU) | Mọi câu chạy song song; Public 1 chạy hết 44 s, Public 2 103 s trong Docker. Ngân sách 36 phút cho 20 câu; sau 85% (khoảng 30,6 phút) không leo thang nữa; hết ngân sách thì dừng cứng, ghi file, thoát mã 0 |
-| ≤ 1 GB khi chạy | Đỉnh bộ nhớ đo bằng cgroup trong Docker `--memory=1g`: 170 MiB (Public 1), 131 MiB (Public 2); ảnh 309 MB. Workbook được parse một lần; tối đa 4 chương trình sinh ra chạy cùng lúc, mỗi chương trình bị giới hạn 128 MB thêm; thư viện số chạy 1 luồng |
+| Đĩa ≤ 1 GB, RAM ≤ 4 GB khi chạy (FAQ câu 03) | Đỉnh bộ nhớ đo bằng cgroup trong Docker `--memory=1g`: 170 MiB (Public 1), 131 MiB (Public 2); ảnh 309 MB. Workbook được parse một lần; tối đa 4 chương trình sinh ra chạy cùng lúc, mỗi chương trình bị giới hạn 128 MB thêm; thư viện số chạy 1 luồng |
 | ZIP ≤ 100 MB | Mã nguồn khoảng 0.2 MB, không kèm dữ liệu |
 
 ## 7. Cấu trúc thư mục
