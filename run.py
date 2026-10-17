@@ -163,7 +163,8 @@ def main():
             print(f"[{q['id']}] cannot read workbook: {e}", file=sys.stderr)
 
     client = make_client()
-    check_access(client)
+    run_usage = Counter()                             # requests outside any question (the access check)
+    check_access(client, run_usage)
 
     def one(q):
         usage, start = Counter(), time.time()
@@ -181,7 +182,11 @@ def main():
                 tr["fallback_error"] = repr(e)
         ans = " ".join(str(ans).split()) if ans is not None else ""      # one line, final answer only
         tr.update({"latency": round(time.time() - start, 2), "calls": usage["calls"],
-                   "prompt_tokens": usage["prompt"], "completion_tokens": usage["completion"]})
+                   "prompt_tokens": usage["prompt"], "completion_tokens": usage["completion"],
+                   "reasoning_tokens": usage["reasoning"], "cost_usd": round(usage["cost"], 8)})
+        print(f"[{q['id']}] {tr['latency']:.1f}s calls={usage['calls']} input={usage['prompt']} "
+              f"reasoning={usage['reasoning']} output={usage['completion']} cost=${usage['cost']:.6f}",
+              file=sys.stderr, flush=True)
         return q["id"], ans, tr
 
     traces = {}
@@ -200,9 +205,15 @@ def main():
     empty = sum(1 for i in ids if not answers.get(i))
     if empty:
         print(f"warning: {empty}/{len(ids)} questions have an empty answer (use --trace to see why)", file=sys.stderr)
+    n = max(len(ids), 1)
     tok = sum(t.get("prompt_tokens", 0) + t.get("completion_tokens", 0) for t in traces.values())
-    print(f"done {len(ids)} questions in {time.time() - t0:.1f}s; tokens/question {tok / max(len(ids), 1):.0f} "
-          f"-> {', '.join(map(str, outs))}")
+    graded = sum(t.get("prompt_tokens", 0) + t.get("reasoning_tokens", 0) for t in traces.values())
+    costs = [t.get("cost_usd", 0.0) for t in traces.values()]
+    total = sum(costs) + run_usage["cost"]
+    print(f"done {len(ids)} questions in {time.time() - t0:.1f}s; tokens/question {tok / n:.0f} "
+          f"(input+reasoning {graded / n:.0f}) -> {', '.join(map(str, outs))}")
+    print(f"cost (OpenRouter usage): total ${total:.6f}, per question avg ${total / n:.6f}, "
+          f"max ${max(costs, default=0.0):.6f} (limit $0.10)")
     if ids and empty == len(ids):
         raise SystemExit(2)
 

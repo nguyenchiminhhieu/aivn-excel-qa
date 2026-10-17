@@ -35,11 +35,13 @@ MODEL = os.environ.get("QA_MODEL", "qwen/qwen3.7-flash")
 _NO_TEMPERATURE: set = set()          # (model, effort) pairs that reject a custom temperature
 
 
-def check_access(client: OpenAI) -> None:
+def check_access(client: OpenAI, usage: Counter | None = None) -> None:
     """One tiny request before the run, so a wrong key fails loudly instead of producing empty answers."""
     try:
-        client.chat.completions.create(model=MODEL, messages=[{"role": "user", "content": "ok"}], max_tokens=1,
-                                       extra_body={"reasoning": {"effort": "none"}})
+        r = client.chat.completions.create(model=MODEL, messages=[{"role": "user", "content": "ok"}], max_tokens=1,
+                                           extra_body={"reasoning": {"effort": "none"}, "usage": {"include": True}})
+        if usage is not None:
+            record_usage(r, usage)
     except (AuthenticationError, PermissionDeniedError, NotFoundError) as e:
         raise SystemExit(f"OpenRouter rejected the request for model {MODEL}: {e}") from None
     except Exception as e:  # noqa: BLE001  a transient error (429/5xx/network) must not stop the run
@@ -58,7 +60,7 @@ def make_client() -> OpenAI:
 def llm_call(client: OpenAI, messages, temperature: float, effort: str, usage: Counter) -> str:
     """One chat completion. `effort` is OpenRouter's reasoning effort: none | low | medium | high."""
     kw = {"model": MODEL, "messages": messages, "max_tokens": 6000,
-          "extra_body": {"reasoning": {"effort": effort}}}
+          "extra_body": {"reasoning": {"effort": effort}, "usage": {"include": True}}}   # usage.cost in USD
     if (MODEL, effort) not in _NO_TEMPERATURE:
         kw["temperature"] = temperature
     for attempt in range(4):
@@ -74,11 +76,24 @@ def llm_call(client: OpenAI, messages, temperature: float, effort: str, usage: C
             if attempt == 3 or not re.search(r"rate|timeout|overload|5\d\d|connection", msg, re.I):
                 raise
             time.sleep(2 * (attempt + 1))
-    if r.usage:
-        usage["prompt"] += r.usage.prompt_tokens
-        usage["completion"] += r.usage.completion_tokens
-        usage["calls"] += 1
+    record_usage(r, usage)
     return r.choices[0].message.content or ""
+
+
+def record_usage(r, usage: Counter) -> None:
+    """Add the usage OpenRouter reports for one response: tokens, reasoning tokens and the billed cost (USD)."""
+    u = getattr(r, "usage", None)
+    if not u:
+        return
+    usage["prompt"] += u.prompt_tokens or 0
+    usage["completion"] += u.completion_tokens or 0
+    details = getattr(u, "completion_tokens_details", None)
+    usage["reasoning"] += (getattr(details, "reasoning_tokens", None) or 0) if details else 0
+    cost = getattr(u, "cost", None)
+    if cost is None and getattr(u, "model_extra", None):
+        cost = u.model_extra.get("cost")
+    usage["cost"] += float(cost or 0)
+    usage["calls"] += 1
 
 
 def extract_code(text: str) -> str | None:
