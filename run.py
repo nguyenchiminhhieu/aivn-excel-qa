@@ -143,7 +143,8 @@ def main():
     lock = threading.Lock()
     _write_csv(outs, ids, answers)                    # a valid file exists from the start
 
-    budget = float(os.environ.get("QA_TIME_BUDGET", 0.8 * 120 * max(len(queries), 1)))
+    # 108 s per question = 36 min per 20 questions: the limit is 40 min, the rest covers container start and network
+    budget = float(os.environ.get("QA_TIME_BUDGET", 108 * max(len(queries), 1)))
     deadline = t0 + 0.85 * budget                     # after this, no escalation: answer with what we have
 
     def stop_at_budget():                             # hard stop: the limit is 40 min per 20 questions
