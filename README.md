@@ -10,13 +10,18 @@ Giải pháp cho đề thi AI2026, Chủ đề 2 "Hỏi đáp trên bảng tính
 docker build --platform linux/amd64 -t ai26c0062 .
 
 docker run --rm \
-  -e OPENROUTER_API_KEY=<khóa OpenRouter> \
-  -v "/đường/dẫn/test":/data:ro \
+  -v "/đường/dẫn/test":/input:ro \
   -v "/đường/dẫn/output":/output \
-  ai26c0062 /data /output/submission.csv
+  ai26c0062 \
+  --xlsx-dir /input/xlsx_files \
+  --queries /input/queries.json \
+  --output /output/submission.csv \
+  --openrouter-key <khóa OpenRouter> \
+  --openrouter-model qwen/qwen3.7-flash \
+  --openrouter-base-url https://openrouter.ai/api/v1
 ```
 
-`ENTRYPOINT` là `python /app/run.py`. Tham số chấm được nối vào sau tên ảnh:
+`ENTRYPOINT` là `python /app/run.py`. Sáu tham số trên là đúng mẫu của hệ thống chấm (Hướng dẫn nộp bài, mục 3); chương trình đọc `.xlsx` từ `--xlsx-dir`, câu hỏi từ `--queries`, ghi đúng vào `--output`, dùng model và endpoint được truyền vào, không ghi gì vào `/input`, log ra stdout/stderr, và thoát mã 0 sau khi ghi xong file. Các cách gọi khác (dùng khi phát triển):
 
 | Cách gọi | Ý nghĩa |
 |---|---|
@@ -37,9 +42,10 @@ docker run --rm \
 └── queries.json       # [{"id": ..., "file_name": "...", "query": "..."}]
 ```
 - `file_name` có thể là một tên file hoặc một danh sách tên file (câu hỏi trên nhiều file); khóa `file_names` nếu có sẽ được ưu tiên.
-- `submission.csv` (UTF-8) gồm đúng hai cột `id,answer`, **mỗi id đúng một dòng** (id trùng chỉ giữ lần đầu), theo thứ tự trong `queries.json`. Ô `answer` chỉ chứa đáp án cuối, trên một dòng.
+- `submission.csv` (UTF-8) gồm đúng hai cột `id,answer`, **mỗi id đúng một dòng** (id trùng chỉ giữ lần đầu), **sắp xếp theo `id` tăng dần** (theo số khi id là số tự nhiên – Giải đáp thắc mắc, câu 04). Ô `answer` chỉ chứa đáp án cuối, trên một dòng; câu không trả lời được để chuỗi rỗng.
 - File kết quả được ghi **ngay từ đầu** (đáp án rỗng) và ghi lại sau mỗi câu trả lời xong (ghi file tạm rồi đổi tên), nên luôn có một file hợp lệ kể cả khi lượt chạy bị dừng giữa chừng.
-- Trước khi chạy, chương trình gửi một yêu cầu rất nhỏ để kiểm tra khóa API; khóa sai thì dừng ngay với thông báo rõ ràng. Nếu mọi câu đều rỗng thì thoát với mã 2.
+- **Dừng cứng theo ngân sách thời gian** (`QA_TIME_BUDGET`, mặc định 96 giây × số câu = 32 phút cho 20 câu, dưới giới hạn 40 phút): hết ngân sách thì ghi file với các câu đã xong (câu chưa xong để rỗng) và thoát mã 0.
+- Trước khi chạy, chương trình gửi một yêu cầu rất nhỏ để kiểm tra khóa API; khóa sai hoặc model không tồn tại thì dừng ngay với thông báo rõ ràng; lỗi tạm thời (429/5xx/mạng) chỉ cảnh báo và chạy tiếp. Nếu mọi câu đều rỗng thì thoát với mã 2.
 
 ## 3. Chạy không dùng Docker
 
@@ -64,6 +70,7 @@ python run.py "<input>" submission.csv
 | `QA_MODEL` | `qwen/qwen3.7-flash` | Model trên OpenRouter |
 | `QA_TIME_BUDGET` | 96 giây × số câu | Ngân sách mềm cho cả lượt chạy. Sau 85% ngân sách, câu hỏi không leo thang sang bước 2 nữa |
 | `QA_CALL_TIMEOUT` | `90` | Timeout mỗi yêu cầu HTTP (giây) |
+| `QA_MAP_MAX_CHARS` | `40000` | Trần độ dài bản đồ bảng gửi cho LLM, để chi phí mỗi câu có trần dưới $0.10 kể cả với workbook rất lớn; bản đồ của bộ public đều dưới 20k ký tự nên không bị cắt |
 | `QA_EXEC_MAX_MB` | `128` | Bộ nhớ thêm tối đa cho mỗi chương trình pandas do LLM sinh; vượt thì bị dừng |
 | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | Endpoint |
 
@@ -107,10 +114,11 @@ Chi phí tính theo giá niêm yết của OpenRouter ($0.03/M token vào, $0.13
 | Điều kiện | Cách đáp ứng |
 |---|---|
 | Dockerfile ở thư mục gốc, Linux amd64, không GPU, có `ENTRYPOINT` | `Dockerfile`, `FROM --platform=linux/amd64 python:3.11-slim`, `ENTRYPOINT ["python", "/app/run.py"]` |
-| `submission.csv` đúng hai cột, mỗi id một dòng, chỉ đáp án cuối | `run.py`: loại id trùng, ghi file ngay từ đầu và sau mỗi câu, đáp án một dòng |
-| Qwen3.7 Flash qua OpenRouter, khóa ngoài mã nguồn | `excelqa/llm.py`: model mặc định `qwen/qwen3.7-flash`, khóa chỉ đọc từ biến môi trường / `.env` / `--api-key` |
-| ≤ $0.10/câu kể cả retry | `max_tokens` 6000 mỗi lần gọi, chỉ retry lỗi mạng/quá tải; tối đa khoảng 9 lần gọi mỗi câu. Trên hai bộ public: trung bình $0.0007, cao nhất $0.003 mỗi câu |
-| ≤ 40 phút cho 20 câu (6 vCPU) | 6 câu song song; Public 1 chạy hết 85–107 s. Ngân sách thời gian mềm 32 phút cho 20 câu, sau đó không leo thang nữa |
+| Nhận đúng 6 tham số `--xlsx-dir --queries --output --openrouter-key --openrouter-model --openrouter-base-url` | `run.py`; đã chạy thử đúng lệnh này trong Docker với `/input` mount read-only, thoát mã 0 |
+| `submission.csv` đúng hai cột, mỗi id một dòng, chỉ đáp án cuối, sắp theo id tăng dần | `run.py`: loại id trùng, sắp id, ghi file ngay từ đầu và sau mỗi câu, đáp án một dòng |
+| Qwen3.7 Flash qua OpenRouter, khóa ngoài mã nguồn | `excelqa/llm.py`: model/endpoint lấy từ `--openrouter-model`/`--openrouter-base-url` (mặc định `qwen/qwen3.7-flash`), khóa chỉ đọc từ `--openrouter-key` / biến môi trường / `.env` |
+| ≤ $0.10/câu kể cả retry | `max_tokens` 6000 mỗi lần gọi, chỉ retry lỗi mạng/quá tải, tối đa khoảng 11 lần gọi mỗi câu; bản đồ gửi LLM bị chặn ở `QA_MAP_MAX_CHARS` (40k ký tự) và khối FOCUS ở 20k ký tự, nên kể cả trường hợp xấu nhất (mọi lần gọi đều dùng hết trần, tính theo bậc giá ≥32k token của OpenRouter) vẫn dưới $0.10/câu. Đo thực tế trên hai bộ public: trung bình $0.0009, cao nhất $0.0033 mỗi câu |
+| ≤ 40 phút cho 20 câu (6 vCPU) | 6 câu song song; Public 1 chạy hết 80–110 s. Sau 85% ngân sách 32 phút không leo thang nữa; hết ngân sách thì dừng cứng, ghi file, thoát mã 0 |
 | ≤ 1 GB khi chạy | Đã chạy Public 1 trong Docker với `--memory=1g`; ảnh 309 MB. Workbook được parse một lần; mỗi chương trình sinh ra bị giới hạn 128 MB thêm; thư viện số chạy 1 luồng |
 | ZIP ≤ 100 MB | Mã nguồn khoảng 0.2 MB, không kèm dữ liệu |
 

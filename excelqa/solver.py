@@ -42,6 +42,10 @@ EXEC_TIMEOUT = 25
 EXEC_MAX_MB = int(os.environ.get("QA_EXEC_MAX_MB", 128))   # extra memory one generated program may use
 MAX_ROWS_FULL = 150            # tables up to this size are shown with all values
 DIRECT_MAX_CHARS = 45000       # direct reading only when the whole map fits comfortably
+# Hard cap on the map sent to the LLM (public maps are < 20k chars). With the FOCUS block capped at 20k chars, one
+# request carries <= ~68k tokens even at one token per character, so the ~11 calls of a question (<= 6000 output
+# tokens each, priced at OpenRouter's >=32k-token tier) stay under the $0.10/question limit.
+MAP_MAX_CHARS = int(os.environ.get("QA_MAP_MAX_CHARS", 40000))
 RESERVED = {"row", "sheet", "path", "label", "is_summary", "has_children", "depth"}
 _STATE: dict[str, dict] = {}   # key -> {"ir", "frames", "facts", "map", "text"}
 
@@ -533,7 +537,7 @@ def _parse(text):
 
 
 def _user(st, question, focus):
-    return (f"{focus}\n\n" if focus else "") + f"MAP:\n{st['map']}\nQuestion: {question}"
+    return (f"{focus[:20000]}\n\n" if focus else "") + f"MAP:\n{st['map'][:MAP_MAX_CHARS]}\nQuestion: {question}"
 
 
 def program_candidate(client, key, question, effort, temperature, usage, focus=""):

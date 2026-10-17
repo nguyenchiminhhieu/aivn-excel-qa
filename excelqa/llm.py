@@ -42,6 +42,8 @@ def check_access(client: OpenAI) -> None:
                                        extra_body={"reasoning": {"effort": "none"}})
     except (AuthenticationError, PermissionDeniedError, NotFoundError) as e:
         raise SystemExit(f"OpenRouter rejected the request for model {MODEL}: {e}") from None
+    except Exception as e:  # noqa: BLE001  a transient error (429/5xx/network) must not stop the run
+        print(f"warning: access check failed ({e}); continuing", flush=True)
 
 
 def make_client() -> OpenAI:

@@ -1,7 +1,11 @@
 """Excel QA – command-line entry point (also the Docker ENTRYPOINT).
 
+    python run.py --xlsx-dir <dir> --queries <queries.json> --output <csv> \
+        --openrouter-key <key> --openrouter-model qwen/qwen3.7-flash --openrouter-base-url https://openrouter.ai/api/v1
     python run.py <input> [<output>]
     python run.py --data-dir <input> --out <output>
+
+The first form is the one the grading system uses (six parameters).
 
 <input>   folder with queries.json and the .xlsx files (directly or in xlsx_files/), or the queries.json file.
           Default: $DATA_DIR, else /data, else the current folder.
@@ -71,6 +75,12 @@ def _out_paths(arg: str | None, base: Path) -> list[Path]:
     return [base / "submission.csv"]
 
 
+def _id_key(i):
+    """Rows are sorted by id ascending (BTC FAQ, question 04): numerically when the id is a natural number."""
+    s = str(i).strip()
+    return (0, int(s), "") if s.isdigit() else (1, 0, s)
+
+
 def _write_csv(paths: list[Path], ids: list, answers: dict):
     for path in paths:
         try:
@@ -92,23 +102,31 @@ def main():
     ap.add_argument("output", nargs="?", help="output CSV path or folder")
     ap.add_argument("--data-dir", "--input", "-i", dest="data_dir", help="same as <input>")
     ap.add_argument("--out", "--output", "-o", dest="out", help="same as <output>")
-    ap.add_argument("--api-key", help="OpenRouter API key (prefer the OPENROUTER_API_KEY environment variable)")
+    ap.add_argument("--xlsx-dir", help="folder with the .xlsx files (grading parameter)")
+    ap.add_argument("--queries", help="path to queries.json (grading parameter)")
+    ap.add_argument("--openrouter-key", "--api-key", dest="api_key",
+                    help="OpenRouter API key (or the OPENROUTER_API_KEY environment variable)")
+    ap.add_argument("--openrouter-model", help="model id, default qwen/qwen3.7-flash")
+    ap.add_argument("--openrouter-base-url", help="default https://openrouter.ai/api/v1")
     ap.add_argument("--workers", type=int, default=int(os.environ.get("QA_WORKERS", 6)),
                     help="questions processed in parallel (default 6)")
     ap.add_argument("--ids", help="comma-separated subset of query ids (debugging)")
     ap.add_argument("--trace", help="optional JSONL file with per-question candidates and decisions")
     args = ap.parse_args()
-    if args.api_key:
-        os.environ["OPENROUTER_API_KEY"] = args.api_key
+    t0 = time.time()
+    for value, var in ((args.api_key, "OPENROUTER_API_KEY"), (args.openrouter_model, "QA_MODEL"),
+                       (args.openrouter_base_url, "OPENROUTER_BASE_URL")):
+        if value:
+            os.environ[var] = value
 
-    from excelqa import solver                       # imported after the key is in the environment
+    from excelqa import solver                       # imported after the key/model/url are in the environment
     from excelqa.llm import check_access, make_client
 
-    t0 = time.time()
-    inp = args.data_dir or args.input or os.environ.get("DATA_DIR") or ("/data" if Path("/data").is_dir() else ".")
+    inp = args.queries or args.data_dir or args.input or os.environ.get("DATA_DIR") or \
+        ("/data" if Path("/data").is_dir() else ".")
     qpath = _find_queries(Path(inp))
     base = qpath.parent
-    files = Files(base)
+    files = Files(Path(args.xlsx_dir) if args.xlsx_dir else base)
     queries = json.loads(qpath.read_text(encoding="utf-8-sig"))
     if args.ids:
         keep = set(args.ids.split(","))
@@ -119,13 +137,23 @@ def main():
             seen.add(str(q["id"]))
             unique.append(q)
     queries = unique
-    ids = [q["id"] for q in queries]
+    ids = sorted((q["id"] for q in queries), key=_id_key)
     outs = _out_paths(args.out or args.output, base)
     answers: dict = {}
+    lock = threading.Lock()
     _write_csv(outs, ids, answers)                    # a valid file exists from the start
 
     budget = float(os.environ.get("QA_TIME_BUDGET", 0.8 * 120 * max(len(queries), 1)))
     deadline = t0 + 0.85 * budget                     # after this, no escalation: answer with what we have
+
+    def stop_at_budget():                             # hard stop: the limit is 40 min per 20 questions
+        time.sleep(max(0.0, t0 + budget - time.time()))
+        with lock:
+            _write_csv(outs, ids, answers)
+            print(f"time budget {budget:.0f}s reached: {len(answers)}/{len(ids)} answered, the rest left empty",
+                  file=sys.stderr, flush=True)
+            os._exit(0)
+    threading.Thread(target=stop_at_budget, daemon=True).start()
 
     for q in queries:                                 # parse each workbook once; forked executors inherit it
         try:
@@ -155,7 +183,7 @@ def main():
                    "prompt_tokens": usage["prompt"], "completion_tokens": usage["completion"]})
         return q["id"], ans, tr
 
-    traces, lock = {}, threading.Lock()
+    traces = {}
     with cf.ThreadPoolExecutor(max(1, args.workers)) as ex:
         for fut in cf.as_completed([ex.submit(one, q) for q in queries]):
             qid, ans, tr = fut.result()
