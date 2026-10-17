@@ -220,29 +220,16 @@ def _names(t: TableIR) -> dict[str, str]:
     return out
 
 
-def top_rows(t: TableIR) -> set:
-    """Ids of the top-level categories: the rows directly under a shallowest-level total (each section's own total
-    root, e.g. "Total, persons at work"), plus shallowest-level rows that are not totals. Depth is relative to the
-    shallowest row, since a caption level may sit above every path. Makes convention 3 checkable in code and MAP."""
-    if not t.rows:
-        return set()
-    d0 = min(len(r.path) for r in t.rows)
-    roots = {tuple(r.path) for r in t.rows if len(r.path) == d0 and r.is_summary and r.has_children}
-    return {r.id for r in t.rows
-            if (len(r.path) == d0 + 1 and tuple(r.path[:d0]) in roots) or (len(r.path) == d0 and not r.is_summary)}
-
-
 def frames(ir: list[TableIR]):
     dfs, facts = {}, []
     for t in ir:
         names = _names(t)
         ages = derived_ages(t)
         depth = max((len(r.path) for r in t.rows), default=1)
-        tops = top_rows(t)
         recs = []
         for r in t.rows:
             rec = {"row": r.id, "sheet": t.sheet, "path": " > ".join(r.path), "label": r.label, "depth": len(r.path),
-                   "is_summary": r.is_summary, "has_children": r.has_children, "is_top": r.id in tops}
+                   "is_summary": r.is_summary, "has_children": r.has_children}
             for k in range(depth):
                 rec[f"level_{k + 1}"] = r.path[k] if k < len(r.path) else None
             if len(t.label_headers) > 1:
@@ -303,10 +290,9 @@ def render(ir: list[TableIR], dfs) -> str:
         for name, unit, b, e in ages:
             out.append(f"  '{name}'  [derived: age in {unit} on '{names[e.id]}' (from '{names[b.id]}'); larger = older on that date]")
         if len(t.rows) <= MAX_ROWS_FULL:
-            out.append("rows: row | flags(S=summary,P=has children,T=top-level category) | path | values in value-column order")
-            tops = top_rows(t)
+            out.append("rows: row | flags(S=summary,P=has children) | path | values in value-column order")
             for r in t.rows:
-                flags = ("S" if r.is_summary else "-") + ("P" if r.has_children else "-") + ("T" if r.id in tops else "-")
+                flags = ("S" if r.is_summary else "-") + ("P" if r.has_children else "-")
                 vals = "; ".join(_fmt(r.values.get(c.id), c.pct) if c.pct and is_num(r.values.get(c.id))
                                  else _cell(r.values.get(c.id)) for c in t.cols)
                 if groups:
@@ -454,8 +440,8 @@ CONVENTIONS = """ANSWER-KEY CONVENTIONS. The question's explicit words override 
    exactly that.
 2. When it says "all / across all / every X" without naming a level, use every X shown in that scope, subtotal and
    aggregate items included; an average is then the plain unweighted mean of those values.
-3. When it names no level and does not say "all", compare or rank the top-level categories (rows flagged T, `is_top`:
-   directly under the grand total); never mix a category with its own sub-categories, never the grand total itself.
+3. When it names no level and does not say "all", compare or rank the top-level categories (directly under the grand
+   total); never put a category together with its own sub-categories, and never the grand total itself.
 4. When it names one row category and one column category, answer from their single intersection cell; add cells
    only when it says sum, total, combined or both.
 5. When a record has its own event date (admission, hire, ...), measure age or any elapsed time on that date, even if
@@ -470,8 +456,7 @@ CONVENTIONS = """ANSWER-KEY CONVENTIONS. The question's explicit words override 
 _PROGRAM_HEAD = """You answer questions about spreadsheet tables by writing a short pandas program.
 The MAP below describes every table. Each table Tk is pre-loaded as a pandas DataFrame named `Tk` (also tables["Tk"]):
 - one row per table row: `row` (Excel row number), `path` ('parent > ... > label', the row hierarchy), `label`,
-  `depth`, `level_1`, `level_2`, ... (path segments), `is_summary` (Total/Subtotal row), `is_top` (top-level
-  category, flag T in the MAP), `has_children`
+  `depth`, `level_1`, `level_2`, ... (path segments), `is_summary` (Total/Subtotal row), `has_children`
   (aggregate row whose children follow), then one column per value column, named exactly as listed in the MAP.
 - Derived columns: '... (sum of N sub-columns)' is the sum of the sub-columns under a column-header group;
   'Age at <event> (days|years)' is a person's age on that event date. They are not table columns for rule 2.
